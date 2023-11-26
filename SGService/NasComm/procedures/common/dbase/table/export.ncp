@@ -1,0 +1,47 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.DBase.Table.Export
+'//		Description	: Exports table content to packed string
+'//		Created		: 2008-02-10 / OP
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+'#message-def:
+'
+'	database
+'		connection-string*
+'	table
+'		name*
+'		where				optional where-clause (for example "annual_costs > 1000")
+'		record-limit		limits number of exported records, default=0
+'		record-offset		sets the offset before first record is exported, default=0
+'	export
+'		data
+'
+'#end
+
+Public Sub Process()
+
+	VerifyRequest("database.connection-string",env("default.database.connection-string"))
+	VerifyRequest
+	
+	dim bb as object = newmsg
+	bb("database.connection-string")=request("database.connection-string")
+	bb("tables.1.name")=request("table.name")
+	bb("tables.1.where")=request("table.where")
+	bb("tables.1.record-limit")=request("table.record-limit")
+	bb("tables.1.record-offset")=request("table.record-offset")
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.db","tables.export","../bin")
+	request.item("table").copyitems(bb.item("tables.1"))
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("table.name")="naf_user"
+	ProcessMsg(msg,"Common.DBase.Table.Export")
+	output(msg.ContentView)
+	
+End Sub

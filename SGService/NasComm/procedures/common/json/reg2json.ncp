@@ -1,0 +1,235 @@
+﻿imports system.text
+imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.json.reg2json
+'//		Description	: (enter short description)
+'//		Created		: 2016-09-04 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	if env("json.procedurename") > "" then
+		ProcessMsg(request,env("json.procedurename"))
+		return
+	end if
+	dim res as new stringbuilder
+	dim tyyppireg as object=newmsg
+'	for each item as object in request.item("reg").subitems
+'		merkkaaTyyppi(item,"",tyyppireg)
+'	next
+	'showcontent(tyyppireg)
+	tyyppireg("/reg_viimeinen")="Y"
+	merkkaaTyyppi(request.item("reg"),"",tyyppireg)
+	'showcontent(tyyppireg)
+	prosessoiItem(request.item("reg"),"",tyyppireg,res,false)
+'	for each item as object in request.item("reg").subitems
+'		prosessoiItem(item,"",tyyppireg,res)
+'	next
+	request("json.data")=res.tostring
+	dim msgw as object = newmsg()
+	msgw("file.path")="c:\temp"
+	msgw("file.name")=guid.newguid().ToString() & "_reg.txt"
+	msgw("file.encoding")="binary"
+	msgw("file.content")=res.tostring
+	processmsg(msgw,"Common.FileSystem.File.Write")
+	msgw("file.name")=guid.newguid().ToString() & "_reg2.txt"
+	msgw("file.content")=env("json.procedurename")
+	processmsg(msgw,"Common.FileSystem.File.Write")
+	
+End Sub
+
+
+private sub MerkkaaTyyppi(item as object,polku as string,tyyppireg as object)
+	dim ref as string=polku & "/" & item.name
+	if item.subitems.count=0 then
+		tyyppireg(ref)="attribuutti"
+	else
+		for each subitem as object in item.subitems
+			if isnumeric(subitem.name) then
+				tyyppireg(ref)=tyyppireg(ref,"kokoelma")
+			else
+				tyyppireg(ref)="ylanode"
+			end if
+		next
+		dim viimeinen as object=nothing
+		for each subitem as object in item.subitems
+			merkkaaTyyppi(subitem,ref,tyyppireg)
+			viimeinen=subitem
+		next
+		if viimeinen isnot nothing then
+			tyyppireg(ref & "/" & viimeinen.name & "_viimeinen")="Y"
+		end if
+	end if
+end sub
+
+
+private sub ProsessoiItem(item as object,polku as string,tyyppireg as object,res as stringbuilder,optional TulostaNimi as boolean=true)
+	dim ref as string=polku & "/" & item.name
+	'output("  ref=" & ref)
+	'output(tyyppireg.contentview)
+	'output("=================================")
+	select case tyyppireg(ref)
+		case "attribuutti"
+		
+			dim s as string=item.itemvalue
+			dim guid as string=system.guid.newguid.tostring
+			s=replace(s,"\",guid)
+			s=replace(s,vbcr,"\r")
+			s=replace(s,vblf,"\n")
+			s=replace(s,chr(9),"\t")
+			s=replace(s,"""","\""")
+			s=replace(s,guid,"\\")
+
+			if isnumeric(item.itemvalue) then 'numerojen ympärille ei hipsuja
+				res.append("""" & item.name & """: " & replace(s,",",".")) 'muutetaan desimaalierotin javascriptin ymmärtämään muotoon
+			elseif item.itemvalue.startswith("{") then 'kentässä raakaa json-dataa
+				res.append("""" & item.name & """: " & s)
+			else
+				res.append("""" & item.name & """: """ & s & """")
+			end if
+			
+'			if isnumeric(item.itemvalue) then 'numerojen ympärille ei hipsuja
+'				res.append("""" & item.name & """: " & replace(item.itemvalue,",",".")) 'muutetaan desimaalierotin javascriptin ymmärtämään muotoon
+'			elseif item.itemvalue.startswith("{") then 'kentässä raakaa json-dataa
+'				res.append("""" & item.name & """: " & item.itemvalue)
+'			else
+'				res.append("""" & item.name & """: """ & item.itemvalue & """")
+'			end if
+			
+			
+			if tyyppireg(ref & "_viimeinen")="Y" then
+				res.appendline("")
+			else
+				res.appendline(",")
+			end if
+		case "kokoelma"
+			res.appendline("""" & item.name & """: [")
+			for each subitem as object in item.subitems
+				prosessoiItem(subitem,ref,tyyppireg,res,false)
+			next
+			res.append("]")
+			if tyyppireg(ref & "_viimeinen")="Y" then
+				res.appendline("")
+			else
+				res.appendline(",")
+			end if
+		case "ylanode"
+			if tulostaNimi then
+				res.appendline("""" & item.name & """: {")
+			else
+				res.appendline("{")
+			end if
+			for each subitem as object in item.subitems
+				prosessoiItem(subitem,ref,tyyppireg,res)
+			next
+			res.append("}")
+			if tyyppireg(ref & "_viimeinen")="Y" then
+				res.appendline("")
+			else
+				res.appendline(",")
+			end if
+		case else
+			errbreak("tuntematon tyyppi",tyyppireg(ref))
+	end select
+end sub
+
+
+'  json
+'    data:'widget": {
+'    >"debug": "on",
+'    >window": {
+'    >"title": "Sample Konfabulator Widget",
+'    >"name": "main_window",
+'    >"width": "500",
+'    >"height": "500",
+'    >}
+'    >image": {
+'    >"src": "Images/Sun.png",
+'    >"name": "sun1",
+'    >"hOffset": "250",
+'    >"vOffset": "250",
+'    >"alignment": "center",
+'    >}
+'    >text": {
+'    >"data": "Click Here",
+'    >"size": "36",
+'    >"style": "bold",
+'    >"name": "text1",
+'    >"hOffset": "250",
+'    >"vOffset": "100",
+'    >"alignment": "center",
+'    >"onMouseUp": "sun1.opacity = (sun1.opacity / 100) * 90;",
+'    >}
+'    >}
+'    >'
+
+
+'{"widget": {
+'    "debug": "on",
+'    "window": {
+'        "title": "Sample Konfabulator Widget",
+'        "name": "main_window",
+'        "width": 500,
+'        "height": 500
+'    },
+'    "image": { 
+'        "src": "Images/Sun.png",
+'        "name": "sun1",
+'        "hOffset": 250,
+'        "vOffset": 250,
+'        "alignment": "center"
+'    },
+'    "text": {
+'        "data": "Click Here",
+'        "size": 36,
+'        "style": "bold",
+'        "name": "text1",
+'        "hOffset": 250,
+'        "vOffset": 100,
+'        "alignment": "center",
+'        "onMouseUp": "sun1.opacity = (sun1.opacity / 100) * 90;"
+'    }
+'}}    
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg
+	msg("reg.widget.debug")="on"
+	msg("reg.widget.window.title")="Sample Konfabulator Widget"
+	msg("reg.widget.window.name")="main_window"
+	msg("reg.widget.window.width")="500"
+	msg("reg.widget.window.height")="500"
+	msg("reg.widget.image.src")="Images/Sun.png"
+	msg("reg.widget.image.name")="sun1"
+	msg("reg.widget.image.hOffset")="250"
+	msg("reg.widget.image.vOffset")="250"
+	msg("reg.widget.image.alignment")="center"
+	msg("reg.widget.text.data")="Click Here"
+	msg("reg.widget.text.size")="36"
+	msg("reg.widget.text.style")="bold"
+	msg("reg.widget.text.name")="text1"
+	msg("reg.widget.text.hOffset")="250"
+	msg("reg.widget.text.vOffset")="100"
+	msg("reg.widget.text.alignment")="center"
+	msg("reg.widget.text.onMouseUp")="sun1.opacity = (sun1.opacity / 100) * 90;"
+	msg("reg.widget.items.1.name")="koe"
+	msg("reg.widget.items.2.name")="koe2"
+	msg("reg.widget.items.3.name")="koe3"
+	msg("reg.widget.items.4.name")="koe4"
+	msg("reg.widget.items.5.name")="koe5"
+	msg("reg.widget.items.6.name")="koe6"
+	msg("reg.widget.items.7.name")="koe7"
+'	msg("reg.widget.pages.1") = "image_1.png"
+'	msg("reg.widget.pages.2") = "image_2.png"
+'	msg("reg.widget.pages.3") = "image_3.png"
+	
+	ProcessMsg(msg,"common.json.reg2json")
+	output(msg("json.data"))
+	'output(msg.ContentView)
+	
+End Sub

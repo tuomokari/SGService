@@ -1,0 +1,69 @@
+﻿imports microsoft.visualbasic
+
+'	Common.DBase.RecordSet.Read
+'	***************************
+'
+'<request description>
+'
+'	database
+'		connection-string*			database connection string, default=env("default.database.connection-string")
+'	recordset
+'		query*
+'		compress					default=N
+'	records							returned record items
+'	field-references				field references if in compressed mode
+'
+'</request description>
+
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest()
+	
+	'	Creating NCBB instance
+	
+    Dim assyFile As String = "$mypath$\..\bin\SystemsGarden.NAS6.DataConnector.dll"
+    If Not System.IO.File.Exists(assyFile) Then Throw New Exception("Assebly file not found: " & assyFile)
+    Dim assy As System.Reflection.Assembly = System.Reflection.Assembly.LoadFrom(assyFile)
+    If assy Is Nothing Then Throw New Exception("Could not load an assembly: " & assyFile)
+	dim instanceName as string="SystemsGarden.NAS6.DataConnector.NCBB"
+    dim ncbb as object = assy.CreateInstance(instanceName)
+    If ncbb Is Nothing Then Throw New Exception("Could not create class instance: " & instanceName)	
+	
+	'	Creating and processing message
+	
+	dim msg as object = newmsg
+	msg("action")="recordset.read"
+	msg.copyitems(request,"database","database")
+	msg.copyitems(request,"recordset","recordset")
+	'if request("recordset.compress")="Y" then request.copyitems(msg,"fields","field-references")
+	ncbb.Process(msg)
+	
+	'	Returning values
+	
+	request.copyitems(msg,"recordset","recordset")
+	request.copyitems(msg,"records","records")
+	if request("recordset.record-count")="" then request("recordset.record-count")="0" 'korjataan yhteensopivuusbugi
+	
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("database.connection-string")="hui"
+	msg("recordset.query")="select * from naf_dep"
+	'msg("recordset.query")="SELECT (3-1)* 5 as [resultvalue]"
+	'msg("recordset.query")="select 1 as ressu FROM (select getdate())"
+	msg("recordset.query")="select 1 as ressu FROM naf_dep"
+	msg("recordset.query")="select 1 as ressu"
+	msg("recordset.query")="EXEC (select 1 as ressu)"
+	msg("recordset.query")="select TOP(1) 1 as ressu FROM naf_dep"
+	msg("recordset.compress")="N"
+	ProcessMsg(msg,"Common.DBase.RecordSet.Read")
+	output(msg)
+	
+end sub
+

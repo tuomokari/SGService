@@ -1,0 +1,68 @@
+﻿imports microsoft.visualbasic
+
+'	Common.DBase.RecordSet.Write
+'	****************************
+
+'<request description>
+'
+'	database
+'		connection-string*			database connection string, default=env("default.database.connection-string")
+'	recordset
+'		query*
+'		compress					default=N
+'		replace						default=N
+'	records							record items
+'
+'</request description>
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest()
+	
+	'	Creating NCBB instance
+	
+    Dim assyFile As String = "$mypath$\..\bin\SystemsGarden.NAS6.DataConnector.dll"
+    If Not System.IO.File.Exists(assyFile) Then Throw New Exception("Assebly file not found: " & assyFile)
+    Dim assy As System.Reflection.Assembly = System.Reflection.Assembly.LoadFrom(assyFile)
+    If assy Is Nothing Then Throw New Exception("Could not load an assembly: " & assyFile)
+	dim instanceName as string="SystemsGarden.NAS6.DataConnector.NCBB"
+    dim ncbb as object = assy.CreateInstance(instanceName)
+    If ncbb Is Nothing Then Throw New Exception("Could not create class instance: " & instanceName)	
+	
+	'	Creating and processing message
+	
+	dim msg as object = newmsg
+	msg("action")="recordset.write"
+	msg.copyitems(request,"database","database")
+	msg.copyitems(request,"recordset","recordset")
+	msg.copyitems(request,"records","records")
+	ncbb.Process(msg)
+	
+	'	Returning values
+	
+	request.copyitems(msg,"recordset","recordset")
+	request.copyitems(msg,"records","records")
+	
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("recordset.query")="select * from naf_dep where dep_id=1"
+	msg("recordset.compress")="N"
+	ProcessMsg(msg,"Common.DBase.RecordSet.Read")
+	output("Lukemisen jälkeen",msg)
+	
+	msg("recordset.id-field")="dep_id"
+	msg("records.1.dep_creator")=1
+	ProcessMsg(msg,"Common.DBase.RecordSet.Write")
+	output("Kirjoituksen jälkeen",msg)
+	
+	ProcessMsg(msg,"Common.DBase.RecordSet.Read")
+	output("Lukemisen jälkeen",msg)
+	
+end sub
+

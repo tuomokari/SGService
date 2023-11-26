@@ -1,0 +1,85 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.MsgSrv.Message.Send
+'##		Purpose: (enter short description)
+'##		Created: 2011-02-10
+'##		Creator: (enter name / initials)
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	server			delivery server information
+'		domain		default=env("msgsrv.server.default.domain")
+'		url*		url address, filled based on domain if empty
+'	service			delivery service information
+'		id*			service id
+'	sender			message sender
+'		name*		default=env("msgsrv.sender.default.name")
+'	message			message definitions
+'		crypt
+'			key		optional AES encrypt key
+'		content*	message content, anything
+'			
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	dim s as string=""
+	
+	'	filling empty url
+	
+	if request("server.domain")>"" and request("server.url")="" then
+		s="http://" & request("server.domain")
+		s+="/modules/msgsrv/msgsrv_entry.aspx"
+		request("server.url")=s
+	end if
+	
+	'	verifying request against description
+	
+	VerifyRequest
+	
+	'	crypting message content
+	
+	dim crypt as object=newmsg
+	crypt("cipher.key")=request("message.crypt.key")
+	crypt("text.plain")=request("message.content")
+	processmsg(crypt,"common.crypt.aes.encrypt")
+	
+	'	sending POST message
+	
+	dim post as object=newmsg
+	post("url")=request("server.url")
+	post("fields.action")="upload message"
+	post("fields.service_id")=request("service.id")
+	post("fields.sender_name")=request("sender.name")
+	post("fields.content")=crypt("text.cipher")	
+	processmsg(post,"common.http.post")
+	
+	'	verifying result
+	
+	if post("response")<>"OK" then throw new exception(post("response"))
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("service.id")="84701-74332-98364-26266-86465"
+	msg("message.content")="Tässä jotain tietoa vastaanottajalle xx"
+	processMsg(msg,"Common.MsgSrv.Message.Send")
+	
+	output(msg)
+	
+End Sub

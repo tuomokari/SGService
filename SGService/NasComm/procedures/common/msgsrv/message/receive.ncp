@@ -1,0 +1,90 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.MsgSrv.Message.Receive
+'##		Purpose: (enter short description)
+'##		Created: 2011-02-10
+'##		Creator: (enter name / initials)
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	server			delivery server information
+'		domain		default=env("msgsrv.server.default.domain")
+'		url*		url address, filled based on domain if empty
+'	service			delivery service information
+'		id*			service id
+'	sender			message sender
+'		name*		default=env("msgsrv.sender.default.name")
+'	message			message definitions
+'		crypt
+'			key		optional AES encrypt key
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	dim s as string=""
+	
+	'	filling empty url
+	
+	if request("server.domain")>"" and request("server.url")="" then
+		s="http://" & request("server.domain")
+		s+="/modules/msgsrv/msgsrv_entry.aspx"
+		request("server.url")=s
+	end if
+	
+	'	verifying request against description
+	
+	VerifyRequest
+	
+	'	sending message request
+	
+	dim post as object=newmsg
+	post("url")=request("server.url")
+	post("fields.action")="download message"
+	post("fields.service_id")=request("service.id")
+	processmsg(post,"common.http.post")
+	
+	'	extracting response data to register
+	
+	dim res as object=newmsg
+	res.contentdata=post("response")
+	if res("message.found")="Y" then
+		request("message.found")="Y"
+		request("message.id")=res("message.id")
+		request("message.sent")=res("message.sent")
+		dim crypt as object=newmsg
+		crypt("text.cipher")=res("message.crypted_content")
+		crypt("cipher.key")=request("message.crypt.key")
+		processmsg(crypt,"common.crypt.aes.decrypt")
+		request("message.content")=crypt("text.plain")
+	else
+		request("message.found")="N"
+		request("message.id")=""
+		request("message.sent")=""
+	end if
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msgsrv as object = newMsg
+	msgsrv("server.domain")="extranas.gneissi.systemsgarden.com"
+	msgsrv("service.id")="84701-74332-98364-26266-86465"
+	processMsg(msgsrv,"Common.MsgSrv.Message.Receive")
+	
+	showcontent(msgsrv)
+	
+End Sub

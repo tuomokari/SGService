@@ -1,0 +1,92 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.NAS.Workflow.Transfer
+'##		Purpose: (enter short description)
+'##		Created: 2010-04-06
+'##		Creator: (enter name / initials)
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	buffer				buffer values
+'	job
+'		id*				job id
+'	action
+'		name*			action name
+'	history
+'		title*
+'		user*
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+	dim s as string=""
+	
+	dim rs_tyo as object=newmsg
+	rs_tyo("recordset.query")="select * from tyonkulut_tyo where tyo_id=" & request("job.id")
+	processmsg(rs_tyo,"common.dbase.recordset.read")
+
+	dim rs_tkteh as object=newmsg
+	s="select * from tyonkulut_tehtava,tyonkulut_tyonkulku"
+	s+=" where teh_id=" & rs_tyo("records.1.tyo_tehtava")
+	s+=" and tk_id=teh_tyonkulku"
+	rs_tkteh("recordset.query")=s
+	processmsg(rs_tkteh,"common.dbase.recordset.read")
+	
+	dim rs_toiminto as object=newmsg
+	s="select * from tyonkulut_toiminto where toi_tehtava=" & rs_tyo("records.1.tyo_tehtava")
+	s+=" and toi_deleted='N'"
+	s+=" and toi_nimi='" & request("action.name") & "'"
+	rs_toiminto("recordset.query")=s
+	processmsg(rs_toiminto,"common.dbase.recordset.read")
+
+	dim rs_uusitehtava as object=newmsg
+	s="select * from tyonkulut_tehtava"
+	s+=" where teh_tyonkulku=" & rs_tkteh("records.1.tk_id")
+	s+=" and teh_nimi='" & rs_toiminto("records.1.toi_ohjaus") & "'"
+	s+=" and teh_deleted='N'"
+	rs_uusitehtava("recordset.query")=s
+	processmsg(rs_uusitehtava,"common.dbase.recordset.read")
+	if rs_uusitehtava("recordset.record-count")<>"1" then errbreak("uutta tehtävää ei löydy")
+
+	rs_tyo("records.1.tyo_tehtava")=rs_uusitehtava("records.1.teh_id")
+	s=vbcrlf & vbcrlf & now.tostring("d.M.yyy HH:mm") & " / " & request("history.user") & vbcrlf
+	s+="-- " & request("history.title") & vbcrlf
+	s+=vbcrlf
+	rs_tyo("records.1.tyo_loki")=rs_tyo("records.1.tyo_loki") & s
+	rs_tyo("records.1.tyo_siirtynyt")=now
+	rs_tyo("records.1.tyo_tavoiteaika")=dateadd(dateinterval.hour,cint(firstfound(rs_uusitehtava("records.1.teh_tavoiteaika"),1)),now)
+	rs_tyo("records.1.tyo_modified")=now
+	rs_tyo("records.1.tyo_modifier")=1
+	processmsg(rs_tyo,"common.dbase.recordset.write")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("job.id")=7
+	msg("action.name")="tuntilistan hyväksyminen"
+	msg("history.title")="koe"
+	msg("history.user")="testi"
+	processMsg(msg,"Common.NAS.Workflow.Transfer")
+
+
+	output(msg)
+	
+End Sub

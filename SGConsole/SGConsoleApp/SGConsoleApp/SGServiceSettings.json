@@ -1,0 +1,81 @@
+﻿{
+  "LoopFrequenceSeconds": 30,
+  "EventLogName": "SystemsGarden",
+  "EventlogSourceName": "Console",
+  "FileLogFolder": "logs",
+  "CMD": "C:\\Windows\\system32\\cmd.exe",
+  "email": {
+    "TaskErrorAddresslist": "Tuomo.kari@systemsgarden.com, tuomo.kari.1960@gmail.com",
+    "ServerName": "mail.smtp2go.com",
+    "ServerPort": null,
+    "SslEnabled": false,
+    "AccountName": "app@systemsgarden.com",
+    "AccountPassword": "cHgwcnlha2Y2a3pm",
+    "SenderAddress": "noreply@systemsgarden.com",
+    "SenderName": "SGService APP19"
+  },
+  "NasComm": {
+    "AssemblyFileName": "systemsgarden.nas6.nascomm.dll",
+    "ClientType": "SystemsGarden.NAS6.NASComm.Client",
+    "ClusterPath": "C:\\A\\SG\\projects\\SGService\\SGService\\nascomm",
+    "ClientName": "SystemsGardenServiceNasComm"
+  },
+  "TaskList": [
+    {
+      "Name": "Restart IIS Site",
+      "Description": "Executes tools.restartsite.ncp when a file is found.",
+      "Program": "NasComm",
+      "Command": "tools/restartsite",
+      "CommandParameter": "{FileName}",
+      "Schedule": {
+        "Type": "file",
+        "FileSetting": {
+          "SpoolFolder": "..\\..\\ScheduleFiles\\spool",
+          "FileMask": "*_59EA96C8-D4EA-4A85-807E-31084F69D322.*",
+          "ProcessFolder": "..\\..\\ScheduleFiles\\process",
+          "ProcessedFolder": "..\\..\\ScheduleFiles\\processed",
+          "FailedFolder": "..\\..\\ScheduleFiles\\failed"
+        }
+      }
+    },
+    {
+      "Name": "Backup",
+      "Description": "Executes tools/backup/backupsites2.ncp once a day.",
+      "Program": "NasComm",
+      "Command": "/backup/backupsites2",
+      "Schedule": {
+        "Type": "time",
+        "TimeSetting": {
+          "DayOfMonthList": "",
+          "DayOfWeekList": "",
+          "HourList": "16",
+          "MinuteList": "22"
+        }
+      }
+    },
+    {
+      "Name": "JokuKomento",
+      "Description": "Executes CMD.",
+      "Program": "CMD",
+      "Command": "/C time /T>E:/temp/huit25.txt",
+      "Schedule": {
+        "Type": "time",
+        "TimeSetting": {
+          "DayOfMonthList": "",
+          "DayOfWeekList": "",
+          "HourList": "12,13,14",
+          "MinuteList": "*"
+        }
+      }
+    }
+    //"C:\\windows\\system32\\inetsrv\\appcmd.exe"  ],
+  ],
+  "Guides": {
+    "Valid Task Program (mandatory)": "NasComm",
+    "Task Command example (mandatory)": "tools/backup/backupsites2",
+    "DayOfMonthList examples": "null  *  last  1,10,last",
+    "DayOfWeekList examples": "null  *  7  1,2,3,4,5",
+    "HourList examples (default=0)": "4  6,12,17  *",
+    "MinuteList examples (default=0)": "0  0,5,10,15,20  *"
+  }
+}

@@ -1,0 +1,119 @@
+﻿imports microsoft.visualbasic
+imports system.text
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.NAS.Admin.ExportSystemTables
+'##		Purpose: Exports all NAS system tables
+'##		Created: 2008-02-27
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	database
+'		connection-string
+'	tables
+'		1
+'			name*
+'			id-field*
+'	file
+'		name*
+'		path
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest
+	
+	dim msg as object=newmsg
+	dim sb as new stringbuilder
+	msg("database.connection-string")=request("database.connection-string")
+	
+	output("trace","exporting tables")
+	for each tbl as object in request.items("tables")
+		output("trace","exporting table",tbl("name"))
+		msg("table.name")=tbl("name")
+		msg.item("export").clear
+		processmsg(msg,"common.dbase.table.export")
+		pack(sb,"table.name",tbl("name"))
+		pack(sb,"table.id-field",tbl("id-field"))
+		pack(sb,"export.data",msg("table.content"))
+	next
+	
+	output("trace","writing content to export file",request("file.path"),request("file.name"))
+	dim f as object=newmsg
+	f("file.name")=request("file.name")
+	f("file.path")=request("file.path")
+	f("file.content")=sb.tostring
+	processmsg(f,"common.filesystem.file.write")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	dim i as integer=0
+	
+	i+=1
+	msg("tables." & i & ".name")="help_text"
+	msg("tables." & i & ".id-field")="help_id"
+
+	i+=1
+	msg("tables." & i & ".name")="naf_dep"
+	msg("tables." & i & ".id-field")="dep_id"
+	
+	i+=1
+	msg("tables." & i & ".name")="naf_group"
+	msg("tables." & i & ".id-field")="grp_id"
+	
+	i+=1
+	msg("tables." & i & ".name")="naf_lock"
+	msg("tables." & i & ".id-field")="lck_id"
+	
+	i+=1
+	msg("tables." & i & ".name")="naf_lockitem"
+	msg("tables." & i & ".id-field")="li_id"
+	
+	i+=1
+	msg("tables." & i & ".name")="naf_module"
+	msg("tables." & i & ".id-field")="mdl_id"
+	
+	i+=1
+	msg("tables." & i & ".name")="naf_page"
+	msg("tables." & i & ".id-field")="pg_id"
+	
+	i+=1
+	msg("tables." & i & ".name")="naf_pageconn"
+	msg("tables." & i & ".id-field")="pc_id"
+	
+	i+=1
+	msg("tables." & i & ".name")="naf_user"
+	msg("tables." & i & ".id-field")="usr_id"
+	
+	i+=1
+	msg("tables." & i & ".name")="user_group2user"
+	msg("tables." & i & ".id-field")="group2user_id"
+
+	i+=1
+	msg("tables." & i & ".name")="naf_cronevent"
+	msg("tables." & i & ".id-field")="ce_id"
+	
+	i+=1
+	msg("tables." & i & ".name")="naf_crontask"
+	msg("tables." & i & ".id-field")="ct_id"
+
+	msg("file.name")="nas_tbl_export.txt"
+	msg("file.path")="c:\temp"
+	processMsg(msg,"Common.NAS.Admin.ExportSystemTables")
+	
+End Sub

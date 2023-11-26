@@ -1,0 +1,596 @@
+﻿imports microsoft.visualbasic
+imports system.text
+imports system.io
+imports system.security.cryptography
+
+
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.NAS.Admin.RedButton
+'##		Purpose: Julkaisee NAS-saitin tuotantoon
+'##		Created: 2010-09-26
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	sites
+'		source
+'			rootpath*			polku josta kopioidaan
+'		target
+'			rootpath			polku johon kopioidaan
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	dim reg as object=newmsg
+	dim s as string=""
+	
+	'	haetaan konffitiedostoa source-juuren alla olevasta redbutton-hakemistosta,
+	'	suojataan keskeyttämällä jos tiedostoa ei löydy
+	
+	request("config.file.path")=env("site.rootpath") & "\redbutton\config.txt"
+	if not file.exists(request("config.file.path")) then
+		output("Config file not found: " & request("config.file.path"))
+		exit sub
+	end if
+	
+	'	luetaan konffitiedoston sisältö, poistetaan kommenttirivit
+	
+	dim cfg as string=""
+	dim cfgLines() as string=split(file.readalltext(request("config.file.path")),vbcrlf)
+	for each cfgLine as string in cfgLines
+		if left(cfgLine,1)<>"'" then cfg+=cfgline & vbcrlf
+	next
+	
+	'	lista exclude-hakemistoista
+	
+	s=findstr(cfg,"# exclude directories", vbcrlf & "#")
+	s=replace(vbcrlf & s & vbcrlf, vbcrlf, ";")
+	reg("config.exclude.directory-list")=s
+	
+	'	lista existing exclude-tiedostoista
+	
+	s=findstr(cfg,"# exclude existing files", vbcrlf & "#")
+	s=replace(vbcrlf & s & vbcrlf, vbcrlf, ";")
+	reg("config.exclude.existing.file-list")=s
+	
+	'	lista exclude-tiedostonimistä
+	
+	s=findstr(cfg,"# exclude filenames", vbcrlf & "#")
+	s=replace(vbcrlf & s & vbcrlf, vbcrlf, ";")
+	reg("config.exclude.filename-list")=s
+	
+	'	lista exclude-tiedostopäätteistä
+	
+	s=findstr(cfg,"# exclude filetypes", vbcrlf & "#")
+	s=replace(vbcrlf & s & vbcrlf, vbcrlf, ";")
+	reg("config.exclude.filetype-list")=s
+	
+	'	source-hakemisto
+	
+	s=trim(findstr(cfg,vbcrlf & "source path:",vbcrlf))
+	request("sites.source.rootpath")=firstfound(request("sites.source.rootpath"),s,env("site.rootpath"))
+	
+	'	target-hakemisto
+	
+	s=trim(findstr(cfg,vbcrlf & "target path:",vbcrlf))
+	request("sites.target.rootpath")=firstfound(request("sites.target.rootpath"),s)
+	
+	'	lokihakemisto
+	
+	s=trim(findstr(cfg,vbcrlf & "log path:",vbcrlf))
+	request("log.path")=firstfound(request("log.path"),s,request("sites.source.rootpath") & "\redbutton\logs")
+	
+	'	backup-hakemisto
+	
+	s=trim(findstr(cfg,vbcrlf & "backup path:",vbcrlf))
+	dim nowStr as string=now.tostring("yyyyMMdd_HHmmss")
+	request("backup.path")=firstfound(request("backup.path"),s,request("sites.source.rootpath") & "\redbutton\backups\" & nowStr)
+	
+	'	connection string
+	
+	s=trim(findstr(cfg,vbcrlf & "connection string:",vbcrlf))
+	request("target.connection-string")=firstfound(request("target.connection-string"),s)
+	
+	'	mode
+	
+	s=trim(findstr(cfg,vbcrlf & "mode:",vbcrlf))
+	request("mode")=firstfound(request("mode"),s)
+	select case request("mode")
+		case "execute","report","dirlist"
+		case else
+			output("invalid request mode: " & request("mode"))
+	end select
+		
+	'	verifioidaan pyyntö
+	
+	VerifyRequest
+
+	'	annetaan nimi lokitiedostolle, varmistetaan että hakemisto olemassa
+	
+	request("log.file")=request("log.path") & "\" & nowStr & ".txt"
+	if not directory.exists(request("log.path")) then
+		directory.createdirectory(request("log.path"))
+	end if
+	
+	writeLog("Processing started at " & now)
+	writeLog("")
+	writeLog("Processing mode: " & request("mode"))
+	writeLog("")
+
+	'	suoritetaan
+	
+	'showcontent(request)
+	
+	FillFiles(request("sites.source.rootpath"),request("sites.target.rootpath"),"",reg, false)
+	writeLog("")
+	writeLog("")
+	'	poistutaan jos hakemistolistaus
+	
+	if request("mode")="dirlist" then exit sub
+	
+	FlushFiles(request("sites.source.rootpath"),request("sites.target.rootpath"),"",reg)
+	
+	'	raportoidaan
+	
+	if request("mode")="execute" then
+	
+		s="" & vbcrlf & vbcrlf
+		s+="***  REDBUTTON PROCESSING REPORT  ***" & vbcrlf
+		s+="" & vbcrlf
+		s+="Directories" & vbcrlf
+		s+=" - scanned: " & reg.intvalue("folders.scanned") & vbcrlf
+		s+=" - created: " & reg.intvalue("folders.created") & vbcrlf
+		s+=" - deleted: " & reg.intvalue("folders.deleted") & vbcrlf
+		s+="" & vbcrlf
+		s+="Files" & vbcrlf
+		s+=" - scanned: " & reg.intvalue("files.scanned") & vbcrlf
+		s+=" - skipped newer: " & reg.intvalue("files.skipped_newer") & vbcrlf
+		s+=" - created: " & reg.intvalue("files.created") & vbcrlf
+		s+=" - updated: " & reg.intvalue("files.updated") & vbcrlf
+		s+=" - deleted: " & reg.intvalue("files.deleted") & vbcrlf
+		s+="" & vbcrlf
+		
+	elseif request("mode")="report" then
+	
+		s="" & vbcrlf & vbcrlf
+		s+="***  REDBUTTON PROCESSING PLAN FOR EXECUTION  ***" & vbcrlf
+		s+="" & vbcrlf
+		s+="Directories" & vbcrlf
+		s+=" - scanned: " & reg.intvalue("folders.scanned") & vbcrlf
+		s+=" - will be created: " & reg.intvalue("folders.created") & vbcrlf
+		s+=" - will be deleted: " & reg.intvalue("folders.deleted") & vbcrlf
+		s+="" & vbcrlf
+		s+="Files" & vbcrlf
+		s+=" - scanned: " & reg.intvalue("files.scanned") & vbcrlf
+		s+=" - skipped newer: " & reg.intvalue("files.skipped_newer") & vbcrlf
+		s+=" - will be created: " & reg.intvalue("files.created") & vbcrlf
+		s+=" - will be updated: " & reg.intvalue("files.updated") & vbcrlf
+		s+=" - will be deleted: " & reg.intvalue("files.deleted") & vbcrlf
+		s+="" & vbcrlf
+		
+	end if
+	
+	'	generoidaan kantamuutosscriptit
+	
+	s+="Database commands:" & vbcrlf & vbcrlf
+	s+=GetDatabaseScript(reg("all_aspx_files"),"") & vbcrlf & vbcrlf
+	's+=GetDatabaseScript(reg("filelist"),"") & vbcrlf & vbcrlf
+	
+	output(s)
+	WriteLog(s)
+	
+	writeLog("")
+	writeLog("Processing finished at " & now)
+	
+	output("Log written to " & request("log.file"))
+	
+End Sub
+
+
+private sub WriteLog(text as string,optional notify as boolean=false)
+	request.intvalue("log.lineptr")+=1
+	dim s as string
+	if notify then s="**" else s="  "
+	file.appendalltext(request("log.file"),request.intvalue("log.lineptr").tostring("0000") & "   " & s & "   " & text & vbcrlf)
+end sub
+
+
+
+private sub FillFiles(sourcePath as string, targetPath as string, relPath as string, reg as object, byval skipMode as boolean)
+
+	dim showChanges as boolean=request("mode")="report"
+	dim executeChanges as boolean=request("mode")="execute"
+	dim listFolders as boolean=request("mode")="dirlist"
+
+	'********************************************
+	'	HAKEMISTOKÄSITTELY
+	'********************************************
+	
+	if listFolders then
+		if instr(reg("config.exclude.directory-list"),";" & relpath & ";")>0 and relpath>"" then
+			skipMode=true
+		end if
+		if skipMode=true then
+			output("-    " & relpath)
+		else
+			output("+    " & relpath)
+		end if
+		goto skipFileHandling
+	end if
+	
+	if instr(reg("config.exclude.directory-list"),";" & relpath & ";")>0 and relpath>"" then
+		'writelog("skipped directory " & relpath)
+		exit sub
+	end if
+	
+	reg.intvalue("folders.scanned")+=1
+	
+	if not directory.exists(targetPath) then
+		reg.intvalue("folders.created")+=1
+		writelog("creating directory " & relPath)
+		if executeChanges then directory.createdirectory(targetPath)
+	end if
+			
+	'********************************************
+	'	TIEDOSTOKÄSITTELY
+	'********************************************
+	
+	for each f as string in directory.getfiles(sourcePath)
+	
+		reg.intvalue("files.scanned")+=1
+		
+		dim fn as string=path.getfilename(f)
+		
+		'	onko kiellettyjen olemassaolevien listassa (kopioidaan vain kerran)
+		
+		if instr(reg("config.exclude.existing.file-list"),";" & relpath & "\" & fn & ";")>0 then
+			if file.exists(targetPath & "\" & fn) then
+				'writelog("skipped existing file " & relpath & "\" & fn)
+				goto fileDone
+			end if
+		end if
+		
+		'	onko kiellettyjen tiedostonimien listassa
+		
+		if instr(reg("config.exclude.filename-list"),";" & fn & ";")>0 then
+			'writelog("skipped by filename " & relpath & "\" & fn)
+			goto fileDone
+		end if
+		
+		'	onko kiellettyjen tiedostopäätteiden listassa
+		
+		dim ext as string=path.getextension(fn)
+		ext=replace(ext,".","")
+		if instr(reg("config.exclude.filetype-list"),";" & ext & ";")>0 then
+			'writelog("skipped by filetype " & relpath & "\" & fn)
+			goto fileDone
+		end if
+		
+		'	jos tiedostoa ei löydy...
+
+		if not file.exists(targetPath & "\" & fn) then
+			reg.intvalue("files.created")+=1
+			dim fi as fileinfo=new fileinfo(f)
+			writeLog("creating file " & relPath & "\" & fn & ", modified " & fi.lastWriteTime)
+			reg("filelist")+="," & f
+			if executeChanges then file.copy(f,targetPath & "\" & fn)
+			goto fileDone
+		end if
+
+		'	jos tiedosto muuttunut...
+		
+		dim fdata1() as byte=file.readallbytes(f)
+		dim fdata2() as byte=file.readallbytes(targetPath & "\" & fn)
+		dim isModified as boolean=false
+		
+		if fdata1.length<>fdata2.length then
+			isModified=true
+		else
+			Dim md5 As MD5 = MD5.Create()
+			dim enc as System.Text.Encoding = System.Text.encoding.GetEncoding("latin1")
+			dim hash1 as string = enc.GetString(md5.computehash(fdata1))
+			dim hash2 as string = enc.GetString(md5.computehash(fdata2))
+			if hash1<>hash2 then
+				isModified=true
+			end if
+		end if
+		
+		'	laitetaan muistiin potentiaaliset aspx-tiedostot
+		
+		if lcase(path.getExtension(f))=".aspx" then
+			reg("all_aspx_files")+="," & f
+		end if
+		
+		
+		'	kopioidaan jos muuttunut
+		
+		if isModified then
+			dim fi as fileinfo=new fileinfo(f)
+			dim fi2 as fileinfo=new fileinfo(targetPath & "\" & fn)
+			
+			'	jos kohdetiedosto on tuoreempi, generoidaan varoitus ja jätetään kopioimatta
+			
+			if fi2.lastWriteTime > fi.lastWriteTime then
+				reg.intvalue("files.skipped_newer")+=1
+				writelog("skipping file " & relPath & "\" & fn & ", modified " & fi2.lastWriteTime & " IS NEWER THAN " & fi.lastWriteTime, true)
+			else
+				reg.intvalue("files.updated")+=1
+				writeLog("updating file " & relPath & "\" & fn & ", modified " & fi2.lastWriteTime & " --> " & fi.lastWriteTime)
+				reg("filelist")+="," & f
+				if executeChanges then
+					directory.createdirectory(request("backup.path"))
+					file.copy(targetPath & "\" & fn, request("backup.path") & "\" & request.intvalue("log.lineptr").tostring("00000") & "_" & fn)
+					'varaudutaan kirjoitussuojattuun
+					try
+						file.copy(f,targetPath & "\" & fn, true)
+					catch ex as exception
+						writelog ("**** ERROR: " & ex.message)
+					end try
+				end if
+			end if
+			goto fileDone
+		end if
+		
+fileDone:
+
+	next
+	
+skipFileHandling:
+
+	'********************************************
+	'	ALIHAKEMISTOKÄSITTELY
+	'********************************************
+	
+	for each d as string in directory.getdirectories(sourcePath)
+		dim dn as string=path.getfilename(d)
+		FillFiles(d,targetPath & "\" & dn, relpath & "\" & dn, reg, skipMode)
+	next
+	
+end sub
+
+
+private sub FlushFiles(sourcePath as string, targetPath as string, relPath as string, reg as object)
+
+	dim showChanges as boolean=request("mode")="report"
+	dim executeChanges as boolean=request("mode")="execute"
+	dim listFolders as boolean=request("mode")="listDirectories"
+
+'	'	poistetaan alihakemisto sisältöineen jos kiellettyjen listalla
+'	
+'	if instr(reg("config.exclude.directory-list"),";" & relPath & ";")>0 then
+'		writelog("deleting excluded folder " & relpath)
+'		DeleteFolder(targetPath,relPath,reg)
+'		exit sub
+'	end if
+
+	'	pysäytetään rekursio jos alihakemisto estettyjen listalla
+	
+	if instr(reg("config.exclude.directory-list"),";" & relPath & ";")>0 and relpath>"" then
+		exit sub
+	end if
+
+	'	rekursiivinen kutsu alihakemistoille
+	
+	for each d as string in directory.getdirectories(targetPath)
+		dim dn as string=path.getfilename(d)
+		FlushFiles(sourcePath & "\" & dn, d, relpath & "\" & dn, reg)
+	next
+	
+	'	käydään läpi tiedostot
+	
+	for each f as string in directory.getfiles(targetPath)
+	
+		'	poistetaan tiedosto jos ei löydy lähdepuolelta
+		
+		dim fn as string=path.getfilename(f)
+		if not file.exists(sourcepath & "\" & fn) then
+			reg.intvalue("files.deleted")+=1
+			writelog("deleting file " & relpath & "\" & fn)
+			if executeChanges then
+				directory.createdirectory(request("backup.path"))
+				file.copy(f, request("backup.path") & "\" & request.intvalue("log.lineptr").tostring("00000") & "_" & fn)
+				'varaudutaan kirjoitussuojattuun
+				try
+					file.delete(f)
+				catch ex as exception
+					writelog ("**** ERROR: " & ex.message)
+				end try
+			end if
+		end if
+		
+	next
+	
+	'	onko hakemisto estettyjen joukossa?
+	'	poistetaan hakemisto jos ei löydy lähdepuolelta
+	
+	if not directory.exists(sourcepath) then
+		reg.intvalue("folders.deleted")+=1
+		writelog("deleting folder " & relpath)
+		if executeChanges then directory.delete(targetPath)
+	end if
+	
+	
+end sub
+
+
+private function GetDatabaseScript(fileList as string, connStr as string) as string
+
+	'///
+	'///	Lukee tiedostoista kantaluontikomennot, kerää tiedot rekkariin, suorittaa
+	'///	kantakyselyn, vertaa taulutietoja ja muodostaa päivitykseen tarvittavat SQL-komennot
+	'///
+	
+	dim reg as object=newmsg
+	dim res as string=""
+	output(fileList)
+	dim files() as string=split(fileList,",")
+	for each f as string in files
+		if f="" then goto skipFile
+		if lcase(path.getExtension(f))<>".aspx" then goto skipFile
+		
+		'	etsitään luontikomentoja generoiduista resursseista
+		
+		dim commands as string=file.readalltext(f)
+		commands=findstr(commands,"resource=tables_mssql","resource=")
+		if commands="" then goto skipFile
+			
+		'	rakennetaan rekkariin tavoitetilanne
+		
+		commands=replace(commands,chr(9)," ")
+		dim lines() as string=split(commands,vbcrlf)
+		dim tblName as string=""
+		for each line as string in lines
+		
+			line=lcase(trim(line))
+			if line>"" then
+			
+				if instr(line,"create table")>0 then
+					tblName=trim(findstr(line,"create table ","("))
+				else
+					dim fldName as string=findstr(line,""," ")
+					fldname=replace(fldName,";","")
+					fldname=replace(fldName,")","")
+					fldname=trim(fldname)
+					if fldName>"" and tblName>"" then
+						dim fldType as string=findstr(line," ",",")
+						reg("tables." & tblName & ".fields." & fldName & ".type")=fldType
+					end if
+				end if
+				if instr(line,";")>0 then tblName=""
+				
+			end if
+		next
+				
+skipFile:
+
+	next
+	
+	'	varmistetaan että yhteys kantaan on olemassa kyselemällä
+	'	taulu joka taatusti on olemassa
+	
+	dim tmp as object=newmsg
+	dim s as string=""
+	tmp("database.connection-string")=request("target.connection-string")
+	tmp("recordset.query")="select top 1 * from naf_user"
+	try
+		processmsg(tmp,"common.dbase.recordset.read")
+	catch ex as exception
+		output("connection to database failed: " & ex.message)
+		exit function
+	end try
+	
+	'	jokaiselle taululle...
+	
+	for each tbl as object in reg.items("tables")
+	
+		'	katsotaan onko taulua olemassa
+
+		tmp.clear
+		tmp("database.connection-string")=request("target.connection-string")
+		tmp("recordset.query")="select top 1 * from " & tbl.name
+		dim tableFound as boolean=true
+		dim recordsFound as boolean=true
+		try
+			processmsg(tmp,"common.dbase.recordset.read")
+			if tmp("recordset.record-count")=0 then recordsFound=false
+		catch ex as exception
+			tableFound=false
+		end try
+		
+		if tableFound then
+		
+			'	generoidaan mahdolliset alter-komennot puuttuville kentille,
+			'	tarkistetaan kuitenkin että tietue löytyi koska muuten
+			'	tiedossa ei ole taulukuvausta
+			
+			if recordsFound then
+				for each fld as object in tbl.items("fields")
+					if not tmp.exists("records.1." & fld.name) then
+						s="alter table " & tbl.name
+						s+=" add " & fld.name & " " & fld("type") & ";"
+						res+=s & vbcrlf
+					end if
+				next
+			else
+				res+="WARNING: no records found from table " & tbl.name & ", could not compare." & vbcrlf
+			end if
+			
+		else
+		
+			'	generoidaan create-komento taululle
+			
+			s=vbcrlf & vbcrlf
+			s+="create table " & tbl.name & " (" & vbcrlf
+			dim isFirst as boolean=true
+			for each fld as object in tbl.items("fields")
+				if not isFirst then s+="," & vbcrlf
+				isFirst=false
+				s+="    " & fld.name & " " & fld("type")
+			next
+			s+=");"
+			
+			res+=s & vbcrlf
+			
+		end if
+			
+	next
+	
+	if res>"" then
+		return res
+	else
+		return "Tables for reported modules are up-to-date"
+	end if
+	
+end function
+
+
+'private sub DeleteFolder(targetPath as string, relPath as string, reg as object)
+'
+'	'	lähetetään ensin alihakemistoille
+'	
+'	for each d as string in directory.getdirectories(targetPath)
+'		dim dn as string=path.getfilename(d)
+'		DeleteFolder(targetPath & "\" & dn, d, relpath & "\" & dn, reg)
+'	next
+'	
+'	'	poistetaan tiedostot
+'	
+'	for each f as string in directory.getfiles(targetPath)
+'		dim fn as string=path.getfilename(f)
+'		reg.intvalue("files.deleted")+=1
+'		writelog("deleting file " & relpath & "\" & fn)
+'		if executeChanges then
+'			directory.createdirectory(request("backup.path"))
+'			file.copy(f, request("backup.path") & "\" & request.intvalue("log.lineptr").tostring("00000") & "_" & fn)
+'			file.delete(f)
+'		end if
+'	next
+'	
+'	'	poistetaan hakemisto
+'	
+'	reg.intvalue("folders.deleted")+=1
+'	writelog("deleting folder " & relpath)
+'	if executeChanges then directory.delete(targetPath)
+'
+'end sub
+
+
+
+Public Sub Simulate()
+
+	dim msg as object = newMsg
+	'msg("sites.source.rootpath")="c:\systemsgarden\sites\users\olli"
+	'msg("mode")="report"
+	msg("mode")="execute"
+	processMsg(msg,"Common.NAS.Admin.RedButton")
+	
+End Sub

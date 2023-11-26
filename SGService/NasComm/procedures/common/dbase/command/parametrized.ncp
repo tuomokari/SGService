@@ -1,0 +1,184 @@
+﻿imports microsoft.visualbasic
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.dbase.command.parametrized
+'//		Description	: Executes sql command using System.Data
+'//		Created		: 2019-03-26 / sg/tk
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+'#assembly-references:System.data.dll
+'#
+
+
+Public Sub Process()
+	try
+		dim ParameterDirection as System.Data.ParameterDirection = new System.Data.ParameterDirection
+		dim SQLcommand as System.Data.SqlClient.SqlCommand = new System.Data.SqlClient.SqlCommand
+		dim SQLconnection as System.Data.SqlClient.SqlConnection = new System.Data.SqlClient.SqlConnection
+		
+		SQLcommand.CommandText = request("SQLCommand.CommandText")
+	    SQLcommand.CommandTimeout = firstfound(request("SQLCommand.CommandTimeout"), env("SQLCommand.CommandTimeout"), 50) ' The time in seconds to wait for the command to execute. The default is 30 seconds.
+	    'SQLcommand.CommandType = SQLcommand.CommandType.Text
+		SQLconnection.ConnectionString=firstfound(request("database.connectionstring"), env("default.database.connection-string"))
+		SQLCommand.connection = SQLConnection
+
+		asetaParametrit(SQLcommand)
+		suoritaSQLcommand(SQLcommand, SQLconnection)
+	catch ex as exception
+		output("============================================================")
+		output("Error in common.dbase.command.parametrized:")
+		output(ex.message)
+		output("============================================================")
+		throw new exception(ex.message)
+	End Try
+End Sub
+
+' ==========================================================================
+sub suoritaSQLcommand(byref SQLcommand as System.Data.SqlClient.SqlCommand, byref SQLconnection as System.Data.SqlClient.SqlConnection)
+	' alustetaan paluuarvoja
+	request("SQLCommand.response.rowcount") = ""
+	request("SQLCommand.response.colcount") = ""
+	
+	dim SQLreader as object 
+	try
+		SQLconnection.Open()
+		SQLreader = SQLCommand.ExecuteReader()
+	catch ex as exception
+		output("============================================================")
+		output("Error executing SQLreader of:")
+		output(SQLcommand.CommandText)
+		output("========================          ==========================")
+		output("Error:")
+		output(ex.message)
+		output("============================================================")
+		throw new exception(ex.message)
+	End Try
+	dim rownr as integer=0, colcount as integer=0
+	Try
+	    While SQLreader.Read()
+			rownr+=1
+			if SQLreader.FieldCount > 0 then
+				colcount = SQLreader.FieldCount
+				for column as integer = 0 to colcount - 1
+					dim colval as string=""
+					if not DBNull.Value.Equals(SQLreader.GetValue(column)) then
+						colval = SQLreader.GetValue(column)
+					end if
+					request("SQLCommand.response.rows." & CStr(rownr) & "." & SQLreader.GetName(column)) = colval 'SQLreader.GetValue(column)
+				next
+			end if
+	    End While
+	catch ex as exception
+		output("============================================================")
+		output("Error handling SQLreader :")
+		output(SQLcommand.CommandText)
+		output("========================          ==========================")
+		output(ex.message)
+	Finally
+	    SQLreader.Close
+	    SQLconnection.Close
+		
+		SQLcommand=nothing
+		SQLreader=nothing
+		SQLconnection=nothing
+	End Try	
+	request("SQLCommand.response.rowcount") = CStr(rownr)
+	request("SQLCommand.response.colcount") = CStr(colcount)
+end sub
+' ==========================================================================
+sub asetaParametrit(byref SQLcommand as System.Data.SqlClient.SqlCommand)
+	dim SQLParameter as System.Data.SqlClient.SqlParameter = new System.Data.SqlClient.SqlParameter
+	dim parameterNr as integer=-1
+	for each parameter as object in request.items("SQLCommand.Parameters")
+		if request("debug")="Y" then output("   add SQLparameter " & parameter.name & "|" & parameter(""))
+		SQLparameter = new System.Data.SqlClient.SqlParameter
+		SQLparameter.ParameterName=parameter.name
+		dim fieldClass as string
+		SQLparameter.SqlDbType=asetaParametrinTyyppi(parameter("type"), fieldClass)
+		if parameter("Size") > "" then
+			dim psize as integer=0
+			if parameter("Size") = "max" then
+				psize = "-1"
+			else
+				psize = CInt(parameter("Size"))
+			end if
+			SQLparameter.Size=psize
+		end if
+		SQLparameter.Value=parametrin_value_or_null(parameter(""), fieldClass)
+		SQLCommand.Parameters.Add(SQLparameter)
+	next
+end sub
+' ==========================================================================
+' palautetaan parametrin mahdollisesti katkaistu tai nullattu arvo
+function parametrin_value_or_null(parameterValue as string, fieldClass as string) as object
+	if parameterValue="" and (fieldClass = "numeric" or left(fieldClass, 4) = "date") then parameterValue="<dbnull>"
+	
+	if LCase(parameterValue) = "<dbnull>" then
+		return DBNull.Value
+	end if
+	return parameterValue
+end function
+' ==========================================================================
+function asetaParametrinTyyppi(type as string, ByRef fieldClass as string) as integer
+	dim ParameterDBType as System.Data.SqlDbType = new System.Data.SqlDbType
+	dim ret as integer = ParameterDBType.VarChar
+	fieldClass=""
+	select Case LCase(type)
+					CASE "", "string" , "varchar"
+						ret = ParameterDBType.Varchar
+						fieldClass="string"
+					CASE "datetime"		
+						ret = ParameterDBType.datetime
+						fieldClass="datetime"
+					CASE "int" , "integer" 
+						ret = ParameterDBType.Int
+						fieldClass="numeric"
+					CASE "float" , "decimal"	
+						ret = ParameterDBType.float
+						fieldClass="numeric"
+					CASE "nvarchar"		
+						ret = ParameterDBType.NVarchar
+						fieldClass="string"
+					CASE "date"			
+						ret = ParameterDBType.date
+						fieldClass="datetime"
+					CASE "char"		
+						ret = ParameterDBType.Char
+						fieldClass="string"
+					CASE "nchar"		
+						ret = ParameterDBType.NChar
+						fieldClass="string"
+					CASE "bit"		
+						ret = ParameterDBType.bit
+						fieldClass="numeric"
+			end select
+	return ret
+end function
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+
+	msg("SQLCommand.CommandText")="INSERT INTO log (teksti, lukuarvo, aika) values (@teksti, @lukuarvo, @aika)"
+	msg("SQLCommand.Parameters.@teksti")="null-arvon testi ja ylipitkä string tulee tässä.... joop!"
+	msg("SQLCommand.Parameters.@teksti.Size")="100"
+	msg("SQLCommand.Parameters.@lukuarvo")="-120"
+	msg("SQLCommand.Parameters.@lukuarvo.type")="int"
+	msg("SQLCommand.Parameters.@aika")="2018-12-01 03:00:00"
+	msg("SQLCommand.Parameters.@aika.type")="datetime"
+	msg("debug")="Y"
+'	ProcessMsg(msg,"common.dbase.command.parametrized")
+'	output("=========================================================================")
+'	output(msg.ContentView)
+'	output("=========================================================================")
+	msg = NewMsg
+	msg("SQLCommand.CommandText")="SELECT * FROM borenius_country WHERE cou_name like @name and cou_deleted='N'"
+	msg("SQLCommand.Parameters.@name")="%e%"
+	msg("SQLCommand.Parameters.@name.Size")="100"
+	msg("debug")="Y"
+	msg("database.connectionstring")="Data Source=localhost;Initial Catalog=elenia_be_test_db;User Id=elenia_be_test_user;Password=fdb1f744-e789-4967-8fa4-286583effef2;Application Name=elenia_be_test_System;MultipleActiveResultSets=True;"
+	ProcessMsg(msg,"common.dbase.command.parametrized")
+	output(msg.ContentView)
+	
+End Sub

@@ -1,0 +1,71 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+imports microsoft.visualbasic
+
+'	Common.FileSystem.File.GetSize
+'	******************************
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("file.path","!!!")
+	VerifyRequest("file.name","!!!")
+	
+	'	Processing request
+	
+	dim fullName as string = request("file.path") & "\" & request("file.name")
+	
+	If not System.IO.File.Exists(fullName) Then
+		request("file.size.bytes") = 0
+		request("file.found") = "N"
+		exit sub
+	else
+		output("htrace","getting file info",fullName)
+		Dim fi As New System.IO.FileInfo(fullName)
+		request("file.size.bytes") = fi.Length
+		request("file.found") = "Y"
+		fi=nothing
+	end if
+	
+	'	Calculating values
+	
+	output("htrace","calculating size values",fullName)
+	dim bytes,kbytes,mbytes as decimal
+	bytes=request("file.size.bytes")
+	kbytes=bytes/1024
+	if kbytes<10 then
+		request("file.size.kbytes")=vbformat(kbytes,"0.00")
+	elseif kbytes<100 then
+		request("file.size.kbytes")=vbformat(kbytes,"0.0")
+	else
+		request("file.size.kbytes")=vbformat(kbytes,"0")
+	end if
+	mbytes=kbytes/1024
+	if mbytes<10 then
+		request("file.size.mbytes")=vbformat(mbytes,"0.00")
+	elseif mbytes<100 then
+		request("file.size.mbytes")=vbformat(mbytes,"0.0")
+	else
+		request("file.size.mbytes")=vbformat(mbytes,"0")
+	end if
+	if mbytes>=1 then
+		request("file.size")=request("file.size.mbytes") & " mbytes"
+	elseif kbytes>=1 then
+		request("file.size")=request("file.size.kbytes") & " kbytes"
+	else
+		request("file.size")=bytes & " bytes"
+	end if
+
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("file.path")="c:\temp"
+	msg("file.name")="tmp.txt"
+	ProcessMsg(msg,"Common.FileSystem.File.GetSize")
+	output(msg)
+	
+end sub
+

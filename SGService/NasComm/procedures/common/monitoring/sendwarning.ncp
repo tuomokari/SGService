@@ -1,0 +1,77 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.Monitoring.SendWarning
+'//		Description	: (enter short description)
+'//		Created		: 2015-06-18 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+'<request description>
+'
+'	group
+'		name*					default=env("monitoring.group.name")
+'	monitor
+'		name*					default=env("monitoring.monitor.name")
+'	msgsrv
+'		server.domain			default=extranas.gneissi.systemsgarden.com
+'		service.id				default=84701-74332-98364-26266-86465
+'		sender.name				default=env("monitoring.msgsrv.sender.name")
+'	event
+'		title					default=ERROR
+'		info
+'
+'</request description>
+
+Public Sub Process()
+
+	verifyRequest
+	
+	'	luodaan monitorointisanoma
+	
+	dim msg as object=newmsg
+	msg("monitor.message.version")="1"
+	msg("monitor.group.name")=request("group.name")
+	msg("monitor.name")=request("monitor.name")
+	msg("monitor.refname")=luoViiteNimi(request("monitor.name"))
+	msg("monitor.sla")=""
+	msg("event.type")="varoitus"
+	msg("event.timestamp")=now.tostring("yyyy-MM-dd HH:mm:ss") 'varmistetaan että kaikki ymmärtävät
+	msg("event.title")=request("event.title")
+	msg("event.description")=request("event.info")
+	'showcontent(msg)
+	
+	'	lähetetään msgsrv-palvelun kautta aspa-monitorille
+	
+	dim msgsrv as object=newmsg
+	msgsrv("server.domain")=request("msgsrv.server.domain")
+	msgsrv("service.id")=request("msgsrv.service.id")
+	msgsrv("sender.name")=request("msgsrv.sender.name")
+	msgsrv("message.content")=msg.contentdata
+	processmsg(msgsrv,"common.msgsrv.message.send")
+	output("Warning message sent to monitoring")
+	
+End Sub
+
+private function LuoViiteNimi(nimi as string) as string
+	dim res as string=""
+	for each ch as char in lcase(nimi)
+		select case ch
+			case "a" to "z","0" to "9","_","-": res+=ch
+			case " ": res+="_"
+		end select
+	next
+	return res
+end function
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg
+	msg("monitor.name")="Ollin monitoritesti"
+	msg("event.title")="Kokeillaan varoitusta"
+	msg("event.info")="Olli kokeilee miten saadaan hälyt lähtemään monitorointiliitokselta"
+	processmsg(msg,"Common.Monitoring.SendWarning")
+	
+End Sub

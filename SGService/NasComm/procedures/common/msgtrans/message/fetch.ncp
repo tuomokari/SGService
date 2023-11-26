@@ -1,0 +1,117 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'
+'	NASComm procedure: Common.MsgTrans.Message.Fetch
+'	Purpose: (enter short description)
+'	Created: (enter date)
+'	Creator: (enter name / initials)
+'
+'##########################################################################################################
+
+
+Public Sub Process()
+
+	VerifyRequest("msgtrans.local.input.queue",env("msgtrans.local.input.queue"),"!!!")
+	VerifyRequest("msgtrans.local.input.crypt.key",env("msgtrans.local.input.crypt.key"))
+	VerifyRequest("msgtrans.local.cluster.path",client("cluster.path"))
+	dim localInputFolder as string = request("msgtrans.local.cluster.path") & "\msgtrans\queues\" & request("msgtrans.local.input.queue")
+	request("msgtrans.message.found")="N" 'oletuksena ei uusia sanomia
+
+SearchMessages:
+	
+	'	katsotaan onko purettuja
+	
+	output("trace","scanning for messages",localInputFolder)
+
+	dim fname as string=""
+	try
+		fname=system.io.directory.getfiles(localInputFolder,"msg_*.txt")(0)
+	catch ex as exception
+		fname=""
+	end try
+	
+	if fname="" then
+	
+		'	ei purettuja sanomia, katsotaan löytyykö jonoa
+		
+		output("trace","no messages, scanning for queue")
+		
+		try
+			fname=system.io.directory.getfiles(localInputFolder,"transfer_queue_*.txt")(0)
+		catch ex as exception
+			fname=""
+		end try
+		if fname="" then
+		
+			'	ei mitään käsiteltävää
+			
+			output("no files, no queues")
+			exit sub
+			
+		else
+		
+			'	jono löytyi, puretaan sanomiksi ja palataan alkuun
+			
+			output("trace","queue found, splitting into message files")
+			
+			dim f as object=newmsg
+			f("file.name")=system.io.path.getfilename(fname)
+			f("file.path")=system.io.path.getdirectoryname(fname)
+			processmsg(f,"common.filesystem.file.read")
+			
+			dim qdata as string=f("file.content")
+			
+			dim enc as system.text.encoding = system.text.encoding.getencoding("UTF-8")
+			dim msgData as string=""
+			dim msgFname as string=localInputFolder & "\msg_" & format(now,"yyyyMMdd_hhmmss") & "_"
+			dim i as integer=0
+			do until qdata=""
+				output("trace","unpacking next message")
+				unpack(qdata,msgData)
+				if msgData>"" then
+					i+=1
+					dim fn as string=msgFname & format(i,"000") & ".txt"
+					output("trace","writing message file",fn)
+					system.io.file.writealltext(fn,msgData,enc)
+				end if
+			loop
+			output("trace","deleting message queue file",fname)
+			system.io.file.delete(fname) 'poistetaan purettu jonotiedosto
+			goto SearchMessages
+			
+		end if
+		
+	else
+	
+		'	on purettu, ladataan pyyntöön ja poistutaan
+		
+		dim msgContent as string=system.io.file.readalltext(fname)
+		if request("msgtrans.local.input.crypt.key")>"" then
+			output("trace","decrypting message",request("msgtrans.local.input.crypt.key"))
+			dim msg as object=newmsg
+			msg("text.cipher")=msgContent
+			msg("crypt.key")=request("msgtrans.local.input.crypt.key")
+			processmsg(msg,"common.crypt.decrypt")
+			msgcontent=msg("text.plain")
+		end if
+
+		
+		request("msgtrans.message.content")=msgcontent
+		request("msgtrans.message.filename")=fname
+		request("msgtrans.message.found")="Y"
+		output("message found",localInputFolder,request("msgtrans.message.filename"))
+
+	end if
+			
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg 'this is referenced as "Request" in procedure
+	msg("msgtrans.local.input.queue")="intra_in"
+	ProcessMsg(msg,"Common.MsgTrans.Message.Fetch")
+	output(msg)
+	
+End Sub

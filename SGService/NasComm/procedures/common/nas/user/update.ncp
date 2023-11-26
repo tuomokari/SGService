@@ -1,0 +1,100 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+imports microsoft.visualbasic
+
+
+'	Common.NAS.User.Update
+'	**********************
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("user.account.name","!!!")
+	VerifyRequest("user.account.password","")
+	VerifyRequest("user.first-name","")
+	VerifyRequest("user.last-name","")
+	VerifyRequest("user.initials","")
+	VerifyRequest("user.language","")
+	VerifyRequest("user.title","")
+	VerifyRequest("user.department.id","")
+	VerifyRequest("user.description","")
+	VerifyRequest("user.email","")
+	VerifyRequest("user.gsm","")
+	VerifyRequest("target-client.name","NAS")
+	VerifyRequest("target-client.timeout",10)
+	VerifyRequest("target-client.wait-answer","Y")
+	
+	'	Transferring request to BB connection
+	
+	dim msg as object = newmsg
+	msg("action")="update_user"
+	msg("account")=request("user.account.name")
+	msg("password")=request("user.account.password")
+	msg("keep-password")="Y"
+	msg("department-id")=request("user.department.id")
+
+	msg("groups-prefix")="0,"
+	msg("groups-postfix")=", 0"
+
+	msg.item("group-items").contentdata=request.item("user.groups.items").contentdata
+
+	if request("user.groups.list")>"" then
+		msg("groups")=request("user.groups.list")
+	end if
+	msg("first-name")=firstfound(request("user.first-name"),"(sync)")
+	msg("last-name")=firstfound(request("user.last-name"),"(sync)")
+	msg("initials")=request("user.initials")
+	msg("language")=request("user.language")
+	
+	'	BE CAREFUL: direct field access clears existing values if left blanc
+	
+	if request("user.title")>"" then msg("db-fields.usr_title")=request("user.title")
+	if request("user.description")>"" then msg("db-fields.usr_descr")=request("user.description")
+	if request("user.email")>"" then msg("db-fields.usr_email")=request("user.email")
+	if request("user.gsm")>"" then msg("db-fields.usr_gsm")=request("user.gsm")
+	if request("user.tel")>"" then msg("db-fields.usr_tel")=request("user.tel")
+	if request("user.hometel")>"" then msg("db-fields.usr_hometel")=request("user.hometel")
+
+	'	Direct table field access
+	
+	for each dbfld as object in request.items("direct-table")
+		msg("db-fields." & dbfld.name)=dbfld.itemvalue
+	next
+
+	if request("target-client.wait-answer")="Y" then
+		output("trace","sending request to target client",request("target-client.name"),request("target-client.timeout"))
+		ProcessApplicationRequest(msg,request("target-client.name"),request("target-client.timeout"))
+		request("user.id")=msg("id")
+	else
+		output("trace","sending request to target client",request("target-client.name"))
+		AppendApplicationRequest(msg,request("target-client.name"))
+	end if
+	
+
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("user.account.name")="blaabala"
+	msg("user.account.password")="koejuttu"
+	msg("user.title")="4"
+	msg("user.description")="3"
+	msg("user.email")="2"
+	msg("user.gsm")="1"
+	msg("user.first-name")="5"
+	msg("user.last-name")="6"
+	msg("user.initials")="7"
+	msg("user.language")="fi"
+	msg("direct-table.usr_iactivate_id")="663"
+	'msg("user.groups.list")="2,3,4,5"
+	msg("user.groups.items.1.name")="Kymi"
+	msg("user.groups.items.2.name")="Lappi"
+	msg("user.groups.items.3.name")="Domain Admins"
+	msg("target-client.wait-answer")="Y"
+	ProcessMsg(msg,"Common.NAS.User.Update")
+	output(msg)
+	
+end sub
+

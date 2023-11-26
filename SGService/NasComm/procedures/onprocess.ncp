@@ -1,0 +1,21 @@
+﻿
+
+'##########################################################################################################
+'
+'	NASComm procedure: OnProcess
+'	Purpose: (enter short description)
+'	Created: (enter date)
+'	Creator: (enter name / initials)
+'
+'##########################################################################################################
+
+
+Public Sub Process()
+
+	env("email.server.name")="mail.smtp2go.com"
+	env("email.server.account.name")="app@systemsgarden.com"
+	env("email.server.account.password")="cHgwcnlha2Y2a3pm"
+	env("email.sender.address")="noreply@systemsgarden.com"
+	env("email.sender.name")="VALO report"
+End Sub
+

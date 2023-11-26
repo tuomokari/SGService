@@ -1,0 +1,72 @@
+﻿imports microsoft.visualbasic
+imports system.net
+imports system.io
+imports system.text
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.HTTP.Get
+'##		Purpose: Loads cnotent from HTTP web server
+'##		Created: 2008-03-15
+'##		Creator: OP
+'##
+'##		2008-06-07/OP: added credential handling, increased default timeout to 10 secs
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	url*				URL address
+'	account				Credentials (optional)
+'		username
+'		password
+'	timeout-secs		Timeout in seconds, default=10
+'	result
+'		encoding		Encoding character set, default=utf-8
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+    Dim webreq As WebRequest = WebRequest.Create(request("url"))
+	webreq.Timeout = request.intvalue("timeout-secs")*1000
+	if request("account.username")>"" then
+		webreq.Credentials = New NetworkCredential(request("account.username"), request("account.password"))
+	else
+		webreq.Credentials = CredentialCache.DefaultCredentials
+	end if
+    Dim result As WebResponse = webreq.GetResponse()
+    Dim stream As Stream = result.GetResponseStream()
+    Dim encode As Encoding = System.Text.Encoding.GetEncoding(request("result.encoding"))
+    Dim reader As New StreamReader(stream, encode)
+	request("result.content")=reader.readtoend
+	reader.close
+	result.close
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	
+	msg("url")="http://demo.systemsgarden.com/_vti_bin/listdata.svc/Silmu_conf"
+	'msg("url")="http://demo.systemsgarden.com/_vti_bin/listdata.svc"
+	'msg("url")="http://demo.systemsgarden.com/tilat/projectsite/_vti_bin/listdata.svc/Documents"
+	
+	
+	processMsg(msg,"Common.HTTP.Get")
+	
+	output(msg)
+	
+End Sub

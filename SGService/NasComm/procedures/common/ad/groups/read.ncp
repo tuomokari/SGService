@@ -1,0 +1,67 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.AD.Groups.Read
+'##		Purpose: Returns list of AD groups
+'##		Created: 2008-11-07
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	ad
+'		server
+'		provider			default=ldap
+'		password
+'		searchbranch
+'		domain
+'	trace					default=N
+'
+'</request description>
+
+sub Process
+
+	'	Verifying input parameters
+	
+	VerifyRequest("ad.server","")
+	VerifyRequest("ad.provider","ldap")
+	VerifyRequest("ad.password","")
+	VerifyRequest("ad.domain","")
+	
+	'	Transferring request to BB connection
+	
+	dim bb as object = newmsg
+	bb("ad.server")=request("ad.server")
+	bb("ad.provider")=request("ad.provider")
+	bb("ad.password")=request("ad.password")
+	bb("ad.domain")=request("ad.domain")
+	bb("ad.searchbranch")=request("ad.searchbranch")
+	
+	'	Executing BB processing
+	
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.ad","groups.list","../bin")
+	
+	'	Transferring content from BB to request
+	
+	for each group as object in bb.items("groups")
+		if group.name<>"count" then
+			request.item("groups." & group.name).contentdata=group.contentdata
+		end if
+	next
+
+end sub
+
+
+sub Simulate
+	'
+	'	Simulates AD user request
+	'
+	dim msg as object = newmsg
+	ProcessMsg(msg,"Common.AD.Groups.Read")
+	output(msg)
+	
+end sub
+

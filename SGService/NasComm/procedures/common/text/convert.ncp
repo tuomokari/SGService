@@ -1,0 +1,65 @@
+﻿imports microsoft.visualbasic
+imports system.text
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Text.Convert
+'##		Purpose: Encode converter
+'##		Created: 2008-05-23
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	input
+'		content			Text to encode
+'		encoding*		Input encoding, default=UTF-8
+'	output
+'		content			Encoded text
+'		encoding*		Output encoding, default=UTF-8
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+	dim inputEncName as string=request("input.encoding")
+	select case inputEncName
+		case "binary": inputEncName="iso8859-1"
+	end select
+
+	dim outputEncName as string=request("output.encoding")
+	select case outputEncName
+		case "binary": outputEncName="iso8859-1"
+	end select
+
+	dim inputEnc as encoding = encoding.getEncoding(inputEncName)
+	dim outputEnc as encoding = encoding.getEncoding(outputEncName)
+	
+    Dim bytes() As Byte = inputEnc.GetBytes(request("input.content"))
+	request("output.content")=outputEnc.GetString(bytes)
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("input.content")="kokeillaan onnnistuuko tämä mitenkään"
+	msg("output.encoding")="latin1"
+	
+	processMsg(msg,"Common.Text.Convert")
+	
+	output(msg)
+	
+End Sub

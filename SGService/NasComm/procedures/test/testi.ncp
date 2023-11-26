@@ -1,0 +1,35 @@
+﻿imports microsoft.visualbasic
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: test.testi
+'//		Description	: (enter short description)
+'//		Created		: 2019-03-27 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+private logFilePath as string
+private errorsFound as integer=0
+private errorMonitorMessage as string=""
+
+Public Sub Process()
+	AppendLog("Hui")
+	dim msg as object = newmsg()
+	msg("file.path")="c:\temp"
+	msg("file.name")="tmp46.txt"
+	msg("file.content")="Nyt on " & now.ToString()
+	ProcessMsg(msg,"Common.FileSystem.File.Append")
+	
+	AppendLog("Hai")
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("my.value")="some value here"
+	ProcessMsg(msg,"OnProcess")
+	ProcessMsg(msg,"test.testi")
+	'output(msg.ContentView)
+	
+End Sub

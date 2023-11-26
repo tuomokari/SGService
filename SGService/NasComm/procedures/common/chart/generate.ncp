@@ -1,0 +1,64 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Chart.Generate
+'##		Purpose: Generates chart image content
+'##		Created: 2008-10-11
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	chart
+'		type
+'		title
+'		width
+'		height
+'	image
+'		filename
+'		content
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+	dim bb as object = newmsg
+	bb.copyitems(request,"")
+	
+	bb("action")="generate"
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.chart","generate","bin")
+	request.copyitems(bb,"image","image")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	
+	msg("chart.type")="pie"
+	msg("chart.title")="koe"
+	msg("chart.items.1.value")=200
+	msg("chart.items.1.title")="testaillaan"
+	msg("chart.items.2.value")=200
+	msg("chart.items.2.title")="testaillaan"
+	msg("chart.items.3.value")=200
+	msg("chart.items.3.title")="testaillaan"
+	
+	processMsg(msg,"Common.Chart.Generate")
+	
+	output(msg)
+	
+End Sub

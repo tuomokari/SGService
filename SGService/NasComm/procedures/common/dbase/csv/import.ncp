@@ -1,0 +1,56 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.DBase.CSV.Import
+'##		Purpose: Imports CSV file content into file
+'##		Created: 2008-03-26
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	database
+'		connection-string*
+'	table
+'		name*
+'	file
+'		path*
+'		name*
+'		start-line		default=1
+'		encoding		default=UTF-8
+'	field-defs*
+'	pre-import
+'		command
+'	on-import
+'		recordlimit		default=unlimited
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest("database.connection-string",env("default.database.connection-string"))
+	VerifyRequest
+
+	dim bb as object = newmsg
+	bb.copyitems(request)
+	output("trace","importing CSV file to table",request("file.name"),request("table.name"))
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.db","csv.import","../bin")
+	output("htrace","import completed",bb)
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	processMsg(msg,"Common.DBase.CSV.Import")
+	
+End Sub

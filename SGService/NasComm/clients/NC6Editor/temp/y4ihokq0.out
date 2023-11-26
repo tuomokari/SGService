@@ -1,0 +1,7 @@
+﻿D:\SystemsGarden\sites\alfons2021_test\nascomm\tools\editor> "C:\Windows\Microsoft.NET\Framework\v2.0.50727\vbc.exe" /t:library /utf8output /R:"System.dll" /R:"System.Web.dll" /R:"d:\systemsgarden\server\nascomm\bin\SystemsGarden.NAS6.NASComm.dll" /R:"d:\systemsgarden\server\nascomm\bin\SystemsGarden.NAS6.Library.dll" /out:"d:\systemsgarden\server\nascomm\clients\NC6Editor\temp\tools.backup.backupsites2_assy_20210326133353_297476211.dll" /debug-  "d:\systemsgarden\server\nascomm\clients\NC6Editor\temp\y4ihokq0.0.vb"
+
+
+Microsoft (R) Visual Basic Compiler versio 8.0.50727.9031
+Microsoft (R) .NET Frameworkin versiota 2.0.50727.9044 varten
+Copyright (c) Microsoft Corporation. Kaikki oikeudet pidätetään.
+

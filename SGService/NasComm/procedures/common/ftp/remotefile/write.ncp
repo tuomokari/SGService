@@ -1,0 +1,68 @@
+﻿imports microsoft.visualbasic
+
+'	Common.FTP.RemoteFile.Write
+'	---------------------------
+
+'<request description>
+'
+'	server				FTP server definition
+'		name*			server address
+'		port			default=21
+'		passivemode		Y/N, default=N
+'		homedir			home directory, default=/
+'
+'	account				FTP account parameters
+'		name			default="Anonymous"
+'		password		default=""
+'	file
+'		content			file content
+'		usebinary		file is transfered in binary mode, default=Y
+'		local
+'			name		local file name
+'			path		local file path, content is sent from content register is missing
+'		remote
+'			name*		remote file name
+'			path		remote path, default=/
+'
+'</request description>
+
+sub Process
+
+	VerifyRequest
+	
+	dim bb as object = newmsg
+	bb("ftp.server")=request("server.name")
+	bb("ftp.port")=request("server.port")
+	bb("ftp.passivemode")=request("server.passivemode")
+	bb("ftp.username")=request("account.name")
+	bb("ftp.password")=request("account.password")
+	bb("ftp.homedir")=request("server.homedir")
+	bb("files.1.remotepath")=request("file.remote.path")
+	bb("files.1.remotename")=request("file.remote.name")
+	bb("files.1.localname")=request("file.local.name")
+	bb("files.1.localpath")=request("file.local.path")
+	bb("files.1.content")=request("file.content")
+	bb("files.1.usebinary")=request("file.usebinary")
+	bb("tempfile.path")=client("cluster.path") & "\data\ftp\tmp"
+	
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.ftp","files.upload","../bin")
+
+end sub
+
+
+sub Simulate
+
+	'output("htrace on")
+
+	dim msg as object = newmsg
+	msg("server.name")=env("test.ftp.server")
+	msg("account.name")=env("test.ftp.username")
+	msg("account.password")=env("test.ftp.password")
+	msg("file.remote.name")="koe345.txt"
+	msg("file.remote.path")="extra_in"
+	msg("file.content")="Kokeillaan kuinka siirto onnistuu"
+	ProcessMsg(msg,"Common.FTP.RemoteFile.Write")
+	output(msg)
+	
+end sub
+

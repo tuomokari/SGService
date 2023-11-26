@@ -1,0 +1,48 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: modules.common.laheta_valvomosanoma
+'//		Description	: (enter short description)
+'//		Created		: 2021-02-22 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	dim work as object=newmsg
+	dim tmp as object=newmsg
+	dim s as string=""
+
+	'	lähetetään sanoma valvomon endpointtiin
+	
+	output("lähetetään sanoma")
+	dim res as string=""
+	for each item as object in request.subitems
+		if res>"" then res+=vbcrlf
+		res+=item.name & "=" & item.itemvalue
+	next
+	tmp.clear
+	tmp("url")="https://valvomo-be-prod.app10.systemsgarden.com/entries/valvomosanoma_v02.aspx"
+	tmp("fields.content")=res
+	processmsg(tmp,"common.http.post")
+	output("raportti lähetetty")
+	output(res)
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object=newmsg
+	msg("palvelin")="app01"
+	msg("profiili")="backup_valvonta"
+	msg("kohde")="app01_backup"
+	msg("yritys")="Serverivalvonta"
+	msg("tila")="varoitus"
+	ProcessMsg(msg,"common.valvomo.laheta_valvomosanoma")
+	output(msg.ContentView)
+	
+End Sub

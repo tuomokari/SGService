@@ -1,0 +1,26 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: test.contentdata
+'//		Description	: (enter short description)
+'//		Created		: 2019-01-31 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	output(request.contentview)
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg.contentdata="Av@AnDcoreAd280Av@AnGversionAdIAvF60r018AnFstatusAdHAvEreadyAnGstartedAdVAvS2019-02-12 07:53:43AnDcronAdRAv@AnFstatusAdCAv@AnFactionAdNAvKilmoittauduAnDsiteAd3196Av@AnCurlAd253Av248https://borenius-fe-prod.app08.systemsgarden.comAnDnameAdSAvPborenius_fe_prodAnElevelAdIAvFmediumAnMwakeup-accessAdDAvAYAnDcoreAd245Av@AnGversionAdIAvF60r018AnFstatusAdHAvEready"
+	ProcessMsg(msg,"test.contentdata")
+	msg.contentdata="Av@AnDcoreAd280Av@AnGversionAdIAvF60r018AnFstatusAdHAvEreadyAnGstartedAdVAvS2019-02-14 02:02:29AnDcronAdYAv@AnFstatusAdJAvGrunningAnFactionAdNAvKilmoittauduAnDsiteAd3198Av@AnCurlAd254Av249https://turvademo-be-prod.app08.systemsgarden.comAnDnameAdTAvQturvademo_be_prodAnElevelAdIAvFmediumAnMwakeup-accessAdDAvAYAnDcoreAd245Av@AnGversionAdIAvF60r018AnFstatusAdHAvEready"
+	ProcessMsg(msg,"test.contentdata")
+	'output(msg.ContentView)
+	
+End Sub

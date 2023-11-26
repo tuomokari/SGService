@@ -1,0 +1,55 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.MsgTrans.Samples.Sample2
+'//		Description	: Malli extran puolella pyörivästä käsittelyscriptistä
+'//		Created		: 2008-01-23 / OP
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	'	prosessoidaan saapuneet sanomat
+
+	dim remotemsg as object=newmsg
+	dim loopLimiter as integer=500
+	dim msg as object=newmsg
+	
+	'// luetaan seuraava saapunut sanoma, aloitetaan käsittelysilmukka
+	
+	msg("msgtrans.local.input.queue")="extra_in"
+	msg("msgtrans.local.cluster.path")="c:\temp\msgtrans_test"
+	
+	processmsg(msg,"Common.MsgTrans.Message.Fetch")
+	do while msg("msgtrans.message.found")="Y"
+	
+		'// rajoitetaan kierrosmäärää sille varalle että tulee onglemia
+		
+		loopLimiter-=1
+		if loopLimiter<=0 then exit do
+		
+		'// luetaan saapunut data sanomaan,
+		'// käynnistetään vastaanotetun sanoman sisään määritetty prosessi
+		
+		remotemsg.contentdata=msg("msgtrans.message.content")
+		output("processing message",remotemsg("msgtrans.remote.action"))
+		procedure(remotemsg("msgtrans.remote.action")).process(remotemsg)
+		
+		'// poistetaan käsitelty sanoma, noudetaan seuraava
+		
+		procedure("Common.MsgTrans.Message.Delete").process(msg)
+		processmsg(msg,"Common.MsgTrans.Message.Fetch")
+		
+	loop
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	ProcessMsg(msg,"Common.MsgTrans.Samples.ExtraSample")
+	
+End Sub

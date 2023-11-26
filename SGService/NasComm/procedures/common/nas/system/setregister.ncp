@@ -1,0 +1,68 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.NAS.System.SetRegister
+'##		Purpose: Sets values to NAS register
+'##		Created: 2008-03-16
+'##		Creator: OP
+'##
+'##		NOTE: available with NAS core 52b12 and later
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	client
+'		name*				Target client name, default=NAS
+'		timeout-secs		default=5
+'	register
+'		name*
+'		value
+'		contentdata			It is also possible to set a register structure
+'			replace			Y/N, default=N
+'			overwrite		Y/N, default=Y
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+	dim msg as object=newmsg
+	msg("action")="set_register"
+	msg.copyitems(request)
+	
+	output("htrace","sending request to target application",request("client.name"))
+	'ProcessApplicationRequest(msg,request("client.name"),request("client.timeout-secs"))
+	AppendApplicationRequest(msg,request("client.name"))
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim reg as object=newmsg
+	reg("main1.sub1")="testing1"
+	reg("main1.sub2")="testing2"
+	reg("main1.sub3")="testing3"
+	reg("main2.sub1")="testing4"
+	reg("main2.sub2")="testing5"
+	
+	dim msg as object = newMsg
+	msg("register.name")="testing"
+	msg("register.contentdata")=reg.contentdata
+	
+	processMsg(msg,"Common.NAS.System.SetRegister")
+	
+	output(msg)
+	
+End Sub

@@ -1,0 +1,308 @@
+
+########################################################################################################
+#sitename:be_prod
+#rb5name:test2prod.rb5
+########################################################################################################
+
+
+'	minne laitetaan
+
+target #sitesrootpath#\#sitename#\#sitename#_be_prod
+
+'	mistä haetaan
+
+source #sitesrootpath#\#sitename#\#sitename#_be_test
+
+'	paikalliset asetukset
+
+#sitename#_be_test								= #sitename#_be_prod
+#sitename#-be-test								= #sitename#-be-prod
+#guid01#		= #guid02#
+#guid03#		= #guid04#
+
+'	korvaukset
+
+replace \install\installer_control.txt
+replace \config\startup.register
+replace *\onprocess.ncp
+replace *\onerror.ncp
+
+'	näitä ei käsitellä
+
+exclude /rb5
+exclude /nas6studio/work
+exclude /nas6studio/locks
+exclude */_*
+exclude \install\logs
+exclude \install\backup
+exclude \isapirewrite4
+exclude \wwwroot\global.asax
+exclude \wwwroot\web.config
+exclude \wwwroot\global.asax
+exclude \wwwroot\tools\remotesql
+exclude \install\backup.bat
+exclude \tools\livetrace4\settings.dat
+exclude \tools\livetrace4\data
+
+exclude *\redbutton4
+exclude *.rb4
+
+exclude \data
+exclude \logs
+exclude \nascomm\clients
+exclude \wwwroot\wwwdata
+exclude \wwwroot\uploads
+
+'	poistot
+
+delete *\thumbs.db
+delete *.scc
+delete \nas5studio
+delete */vanhaa*
+delete */_*
+delete *.zip
+
+
+#end
+########################################################################################################
+#sitename:be_test
+#rb5name:master2test.rb5
+########################################################################################################
+
+
+
+environment #sitename#-be-test-valto.dekra.fi
+
+'	minne laitetaan
+
+target #sitesrootpath#\#sitename#\#sitename#_be_test
+
+'	mistä haetaan
+
+source master:/nas6/sites/be
+source master:/nas6/modules/PDFGen
+source master:/nas6/modules/rs4
+source master:/nas6/modules/upload3
+source master:/nas6/modules/yleiset/be
+source master:/nas6/modules/amcharts
+source master:/nas6/nascomm
+source master:/nas6/themes/dekra
+source master:/nas6/nas6studio/be
+source master:/nas6/modules/valto/be
+
+'	paikalliset asetukset
+
+<rb4:site_basename>			= #sitename#_be_test
+<rb4:site_rootpath>			= #sitesrootpath#\#sitename#\#sitename#_be_test
+<rb4:dbase_server>			= localhost
+<rb4:password>				= #guid01#
+<rb4:iis_host_header>		= #sitename#-be-test-valto.dekra.fi
+<rb4:nas6studio_key>		= #guid03#
+
+'	luodaan kerran
+
+create /config/startup.register
+
+'	korvaukset
+
+replace /install/installer_control.txt
+replace /config/startup.register
+replace */onprocess.ncp
+replace */onerror.ncp
+
+'	näitä ei käsitellä
+
+exclude /rb5
+exclude /nas6studio/work
+exclude /nas6studio/locks
+exclude /install/logs
+exclude /install/backup
+exclude /nas5studio
+exclude /isapirewrite4
+exclude /wwwroot/global.asax
+exclude /wwwroot/web.config
+exclude /wwwroot/global.asax
+exclude /wwwroot/tools/remotesql
+exclude /install/backup.bat
+exclude /tools/livetrace4/settings.dat
+exclude /tools/livetrace4/data
+exclude /wwwroot/modules/oiva/*
+exclude /wwwroot/modules/tulityot/*
+
+exclude */redbutton4
+exclude *.rb4
+
+exclude /data
+exclude /logs
+exclude /licence
+exclude /nascomm/clients
+exclude /wwwroot/wwwdata
+exclude /wwwroot/uploads
+
+exclude */vanhaa*
+exclude */_*
+
+'	poistot
+
+delete */thumbs.db
+delete *.scc
+
+
+#end
+########################################################################################################
+#sitename:fe_prod
+#rb5name:test2prod.rb5
+########################################################################################################
+
+
+
+'	minne laitetaan
+
+target #sitesrootpath#\#sitename#\#sitename#_fe_prod
+
+'	mistä haetaan
+
+source #sitesrootpath#\#sitename#\#sitename#_fe_test
+
+'	paikalliset asetukset
+
+#sitename#_fe_test								= #sitename#_fe_prod
+#sitename#-fe-test								= #sitename#-fe-prod
+#sitename#_be_test								= #sitename#_be_prod
+#sitename#-be-test								= #sitename#-be-prod
+#guid05#		= #guid06#
+#guid07#		= #guid08#
+#guid01#		= #guid02#
+
+'	korvaukset
+
+replace /install/installer_control.txt
+replace /config/startup.register
+replace */onprocess.ncp
+replace */onerror.ncp
+replace /config/startup.register
+
+'	näitä ei käsitellä
+
+exclude /nas6studio/work
+exclude /nas6studio/locks
+exclude */_*
+exclude /rb5
+exclude /install/logs
+exclude /install/backup
+exclude /isapirewrite4
+exclude /wwwroot/global.asax
+exclude /wwwroot/web.config
+exclude /wwwroot/global.asax
+exclude /wwwroot/tools/remotesql
+exclude /install/backup.bat
+exclude /tools/livetrace4/settings.dat
+exclude /tools/livetrace4/data
+exclude /nas5studio/*
+
+exclude /data
+exclude /logs
+exclude /nascomm/clients
+exclude /wwwroot/wwwdata
+exclude /wwwroot/uploads
+
+'	poistot
+
+delete */thumbs.db
+delete *.scc
+delete /nas5studio
+delete */vanhaa*
+delete *.zip
+
+'	lisenssihakemisto aina pakollinen
+
+create /licence
+keepfolder /licence
+
+
+#end
+########################################################################################################
+#sitename:fe_test
+#rb5name:master2test.rb5
+########################################################################################################
+
+
+
+environment #sitename#-fe-test-valto.dekra.fi
+
+'	minne laitetaan
+
+target #sitesrootpath#\#sitename#\#sitename#_fe_test
+
+'	mistä haetaan
+
+source master:/nas6/sites/fe
+source master:/nas6/modules/rs4
+source master:/nas6/modules/upload3
+source master:/nas6/modules/yleiset/fe
+source master:/nas6/themes/dekra
+source master:/nas6/nas6studio/fe
+source master:/nas6/modules/valto/fe
+
+'	paikalliset asetukset
+
+<rb4:site_basename>				= #sitename#_fe_test
+<rb4:site_rootpath>				= #sitesrootpath#\#sitename#\#sitename#_fe_test
+<rb4:dbase_server>				= localhost
+<rb4:password>					= #guid05#
+<rb4:iis_host_header>			= #sitename#-fe-test-valto.dekra.fi
+<rb4:nas6studio_key>			= #guid07#
+
+<rb4:mainsite_basename>			= #sitename#_be_test
+<rb4:mainsite_password>			= #guid01#
+<rb4:mainsite_rootpath>			= #sitesrootpath#\#sitename#\#sitename#_be_test
+<rb4:iis_mainsite_host_header>	= #sitename#-be-test-valto.dekra.fi
+
+'	korvaukset
+
+replace /install/installer_control.txt
+replace /config/startup.register
+
+'	luonnit
+
+create */onprocess.ncp
+create */onerror.ncp
+
+'	näitä ei käsitellä
+
+exclude /nas6studio/work
+exclude /nas6studio/locks
+exclude /rb5
+exclude /install/logs
+exclude /install/backup
+exclude /nas5studio
+exclude /isapirewrite4
+exclude /wwwroot/global.asax
+exclude /wwwroot/web.config
+exclude /wwwroot/global.asax
+exclude /wwwroot/tools/remotesql
+exclude /install/backup.bat
+exclude /tools/livetrace4/data
+
+exclude */redbutton4
+exclude *.rb4
+
+exclude /data
+exclude /logs
+exclude /nascomm/clients
+exclude /wwwroot/wwwdata
+exclude /wwwroot/uploads
+
+exclude */vanhaa*
+exclude */_*
+
+'	poistot
+
+delete */thumbs.db
+delete *.scc
+
+'	lisenssihakemisto aina pakollinen
+
+create /licence
+keepfolder /licence
+

@@ -1,0 +1,56 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+Imports System.Text
+Imports System.IO
+Imports System.Security.Cryptography
+
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.Crypt.AES.Decrypt
+'//		Description	: (enter short description)
+'//		Created		: 2008-02-11 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	VerifyRequest("aes.key","(default)") 'don't want to show this
+	VerifyRequest("aes.iv","(default)") 'don't want to show this
+	VerifyRequest("text.cipher","!!!")
+
+
+ 	Dim inBytes() As Byte = Convert.FromBase64String(request("text.cipher"))
+    Dim mStream As New MemoryStream(inBytes, 0, inBytes.Length)
+    Dim aes As New RijndaelManaged()
+    Dim _key As Byte()
+	if request("aes.key")="(default)" then
+		_key = ASCIIEncoding.ASCII.GetBytes("JHG23ED78SJH34KSjhgsd987sJHGS876")
+	else
+		_key = ASCIIEncoding.ASCII.GetBytes(request("aes.key"))
+	end if
+	Dim _iv As Byte()
+	if request("aes.iv")="(default)" then
+		_iv = ASCIIEncoding.ASCII.GetBytes("JHGjhg876sKjh987")
+	else
+		_iv = ASCIIEncoding.ASCII.GetBytes(request("aes.iv"))
+	end if		
+    Dim cs As New CryptoStream(mStream, aes.CreateDecryptor(_key, _iv), CryptoStreamMode.Read)
+    Dim sr As New StreamReader(cs)
+    request("text.plain") = sr.ReadToEnd()
+
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("text.plain")="some value here"
+	ProcessMsg(msg,"Common.Crypt.AES.Encrypt")
+	output(msg.ContentView)
+	msg("text.plain")=""
+	ProcessMsg(msg,"Common.Crypt.AES.Decrypt")
+	output(msg.ContentView)
+	
+End Sub

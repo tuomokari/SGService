@@ -1,0 +1,57 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Tools.EtsiTiedosto
+'//		Description	: (enter short description)
+'//		Created		: 2014-04-27 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+private sub ScannaaHakemisto(polku as string)
+	'output("hakemisto",polku)
+	for each subdir as string in system.io.directory.getdirectories(polku)
+		for each tyyppi as string in split(request("tiedostotyypit"),",")
+			for each file as string in system.io.directory.getfiles(subdir,"*." & tyyppi)
+				dim onTulostettu as boolean=false
+				if not file.contains("\backup\") then
+					for each hakuavain as string in split(request("hakuavaimet"),"&&")
+						if system.io.file.readalltext(file).IndexOf(hakuavain, StringComparison.OrdinalIgnoreCase) >= 0 then
+							if not onTulostettu then
+								output("")
+								output("  " & file)
+								output("")
+								onTulostettu=true
+							end if
+							output("    - " & hakuavain)
+						end if
+					next
+				end if
+			next
+		next
+		scannaaHakemisto(subdir)
+	next
+end sub
+
+
+Public Sub Process()
+
+	scannaaHakemisto(request("hakemistopolku")) 
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("hakemistopolku")="d:\SystemsGarden\sites\"
+	'msg("hakuavaimet")="metripaino,kappalepaino,toimitusyksikko,toimitusyksikk�"
+	'msg("hakuavaimet")="hankintanimike_autocomplete_list"
+	msg("hakuavaimet")="valvomo-be-prod.app08"
+	msg("tiedostotyypit")="aspx,css,txt,ncp,register"
+	'msg("tiedostotyypit")="aspx"
+	processmsg(msg,"Tools.EtsiTiedosto")
+	
+End Sub

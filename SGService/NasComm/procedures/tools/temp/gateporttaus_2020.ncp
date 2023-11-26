@@ -1,0 +1,80 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: tools.temp.gateporttaus_2020
+'//		Description	: (enter short description)
+'//		Created		: 2020-05-06 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	scannaaHakemisto("d:\systemsgarden",10,100000)
+	'scannaaHakemisto("d:\systemsgarden\sites\rahnat",10,100000)
+	
+End Sub
+
+private sub ScannaaHakemisto(polku as string,tasorajoitin as integer,byref hakemistorajoitin as integer)
+	if tasorajoitin<0 then exit sub
+	for each subdir as string in system.io.directory.getdirectories(polku)
+		hakemistorajoitin-=1
+		if hakemistorajoitin<0 then exit sub
+		dim skippaaHakemisto as boolean=false
+		if subdir.endswith("\logs") then skippaaHakemisto=true
+		if subdir.endswith("\backup") then skippaaHakemisto=true
+		if subdir.endswith("\backups") then skippaaHakemisto=true
+		if subdir.endswith("\temp") then skippaaHakemisto=true
+		if subdir.endswith("\tmp") then skippaaHakemisto=true
+		if subdir.endswith("\poistetut") then skippaaHakemisto=true
+		if subdir.endswith("\kartat") then skippaaHakemisto=true
+		if subdir.endswith("\data") then skippaaHakemisto=true
+		if subdir.endswith("\clients") then skippaaHakemisto=true
+		if subdir.endswith("\nas5studio") then skippaaHakemisto=true
+		if subdir.endswith("\nas6studio") then skippaaHakemisto=true
+		if subdir.endswith("\install") then skippaaHakemisto=true
+		if subdir.contains("\_conv_") then skippaaHakemisto=true
+		if not skippaaHakemisto then
+			'output(subdir)
+			'dim tiedostot as integer=0
+			for each tyyppi as string in split("ncp,aspx",",")
+				for each file as string in system.io.directory.getfiles(subdir,"*." & tyyppi)
+					'tiedostot+=1
+					for each hakuavain as string in split("188.117.24.110","&&")
+						if system.io.file.readalltext(file).IndexOf(hakuavain, StringComparison.OrdinalIgnoreCase) >= 0 then
+							output(file & " (" & hakuavain & ")")
+'							if file.contains("rahnat_be_test") and file.endswith("\wwwroot\entries\main.aspx") then 'kokeillaan korvausta
+'								output("kokeillaan korvausta")
+								output("suoritetaan korvaus",file)
+								dim f as object=newmsg
+								f("file.name")=system.io.path.getFileName(file)
+								f("file.path")=system.io.path.getDirectoryName(file)
+								f("file.encoding")="binary"
+								processmsg(f,"common.filesystem.file.read")
+								dim p as string=f("file.path")
+								f("file.path")=f("file.path") & "/_conv_" & now.tostring("HHmmss")
+								processmsg(f,"common.filesystem.file.write") 'tehdään varmistus
+								f("file.path")=p
+								f("file.content")=replace(f("file.content"),"188.117.24.110","5.250.167.198")
+								processmsg(f,"common.filesystem.file.write")
+'							end if
+						end if
+					next
+				next
+			next
+			'if tiedostot=0 then output(subdir)
+			scannaaHakemisto(subdir,tasorajoitin-1,hakemistorajoitin)
+		end if
+	next
+end sub
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("my.value")="some value here"
+	ProcessMsg(msg,"tools.temp.gateporttaus_2020")
+	'output(msg.ContentView)
+	
+End Sub

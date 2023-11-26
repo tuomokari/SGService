@@ -1,0 +1,98 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Email.Message.Fetch
+'##		Purpose: Returns next message from POP3/IMAP4 server
+'##		Created: 2008-04-01
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	work-path*
+'	download
+'		keep-original		Keeps original message in mailbox, default=Y
+'		message-limit		Limits the number of downloaded messages per connection, default=10
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest
+	dim tmp as object=newmsg
+	
+	'	haetaan seuraava sanoma siirtopuskurista
+
+FetchNextMessage:
+
+	output("htrace","scanning for next message in buffer")
+	
+	tmp.clear
+	tmp.copyitems(request)
+	tmp("messages.limit")=1
+	try
+		ExecuteBBRequest(tmp, "SystemsGarden.NAS52.BB.Mail","message.fetch","..\bin")
+	catch ex as exception
+		output("htrace","message processing failed")
+		dim msg as object=newmsg
+		msg("file.path")=request("work-path") & "\messages"
+		msg("file.name")=tmp("message.filename")
+		msg("file.new.path")=request("work-path") & "\messages\failed"
+		processmsg(msg,"common.filesystem.file.move")
+		goto FetchNextMessage
+	end try
+	if tmp("message.found")="N" then 
+		output("htrace","no messages in buffer")
+		goto DownloadMessages
+	end if
+	
+	'	palautetaan sanoman tiedot
+	
+	output("htrace","buffer message found",tmp("message.filename"),tmp("message.from"),tmp("message.subject"))
+	request.item("message").copyitems(tmp,"message")
+	request("message.found")="Y"
+	exit sub
+	
+DownloadMessages:
+
+	'	ei sanomia siirtopuskurissa, haetaan seuraava pumpsi (tässä vaiheessa 2 kpl)
+	
+	output("trace","downloading messages")
+	tmp.clear
+	tmp.copyitems(request)
+	tmp("messages.limit")=request("download.message-limit")
+    tmp("messages.keep-original")=request("download.keep-original")
+	ExecuteBBRequest(tmp, "SystemsGarden.NAS52.BB.Mail","messages.download","..\bin")
+	if tmp.intvalue("messages.loaded")>0 then 
+		output("htrace","messages loaded",tmp("messages.loaded"))
+		goto FetchNextMessage
+	end if
+	
+	'	ei sanomia serverilläkään, voidaan poistua
+	
+	output("htrace","no messages in server")
+	request("message.found")="N"
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("work-path")=client("cluster.path") & "\data\tiketti\tmp"
+	msg("server.name") = "Saarni.sgnet.systemsgarden.com"
+    msg("server.protocol") = "IMAP4"
+    msg("account.username") = "tiketti"
+    msg("account.password") = "Qwerty123"
+	processMsg(msg,"Common.Email.Message.Fetch")
+	output(msg)
+	
+End Sub

@@ -1,0 +1,66 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Testing.ReportStatus
+'##		Purpose: (enter short description)
+'##		Created: 2010-11-16
+'##		Creator: (enter name / initials)
+'##
+'##########################################################################################################
+'
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	onko remotesql perusasetuksessa?
+	
+	dim res as string=""
+	
+	dim tmp as object=newmsg
+	tmp("file.path")=env("site.rootpath") & "\wwwroot"
+	tmp("file.name")="web.config"
+	processmsg(tmp,"common.filesystem.file.read")
+	
+	if instr(tmp("file.content"),"<add key=""remotesql_account"" value=""su""/>")>0 then
+		res+="RemoteSQL account: default<br>" & vbcrlf
+	else
+		res+="RemoteSQL account: OK<br>"
+	end if
+	
+	if instr(tmp("file.content"),"<add key=""remotesql_password"" value=""aa""/>")>0 then
+		res+="RemoteSQL password: default<br>" & vbcrlf
+	else
+		res+="RemoteSQL password: OK<br>"
+	end if
+	
+	if instr(tmp("file.content"),"<add key=""remotesql_ip"" value=""*""/>")>0 then
+		res+="RemoteSQL IP: default<br>" & vbcrlf
+	else
+		res+="RemoteSQL IP: OK<br>"
+	end if
+	
+	tmp.clear
+	tmp("recordset.query")="select * from naf_user where usr_sname='su'"
+	processmsg(tmp,"common.dbase.recordset.read")
+	if tmp("records.1.usr_password")="/q8GpGTTgh6X2+N+LcoAPLzHnGx5dHbTibpgauSAdYE=" then
+		res+="SU password: default<br>" & vbcrlf
+	else
+		res+="SU password: OK<br>"
+	end if
+	
+	request("report.output")=res
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	processMsg(msg,"Testing.ReportStatus")
+	
+End Sub

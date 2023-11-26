@@ -1,0 +1,95 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.NAS.Workflow.Init
+'##		Purpose: (enter short description)
+'##		Created: 2010-04-06
+'##		Creator: (enter name / initials)
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	buffer				buffer values
+'	job
+'		workflow*		workflow name
+'		task*			task name
+'		title			job title
+'		ref				job reference
+'		user			user reference
+'	log
+'		title
+'		user*
+'		comment
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+	dim s as string=""
+	s="select * from tyonkulut_tyonkulku,tyonkulut_tehtava"
+	s+=" where tk_nimi='" & request("job.workflow") & "'"
+	s+=" and teh_tyonkulku=tk_id"
+	s+=" and teh_nimi='" & request("job.task") & "'"
+	s+=" and tk_deleted='N'"
+	s+=" and teh_deleted='N'"
+	dim rs_tkteh as object=newmsg
+	rs_tkteh("recordset.query")=s
+	processmsg(rs_tkteh,"common.dbase.recordset.read")
+	output(rs_tkteh.contentview)
+
+	dim rs_tyo as object=newmsg
+	rs_tyo("recordset.query")="select * from tyonkulut_tyo where tyo_id=0"
+	processmsg(rs_tyo,"common.dbase.recordset.read")
+	rs_tyo("records.1.tyo_nimi")=firstfound(request("job.title"),request("job.task"))
+	rs_tyo("records.1.tyo_tehtava")=rs_tkteh("records.1.teh_id")
+	
+	s=now.tostring("d.M.yyy HH:mm") & " / " & request("log.user") & vbcrlf
+	s+=request("log.title") & vbcrlf
+	s+=vbcrlf
+	rs_tyo("records.1.tyo_loki")=s
+	rs_tyo("records.1.tyo_alkanut")=now
+	rs_tyo("records.1.tyo_siirtynyt")=now
+	rs_tyo("records.1.tyo_avausaika")=now
+	rs_tyo("records.1.tyo_tavoiteaika")=dateadd(dateinterval.hour,cint(firstfound(rs_tkteh("records.1.teh_tavoiteaika"),1)),now)
+	rs_tyo("records.1.tyo_datapuskuri")=request.item("buffer").contentdata
+	rs_tyo("records.1.tyo_tunniste")=request("job.ref")
+	rs_tyo("records.1.tyo_ed_kasittelija")=request("log.user")
+	rs_tyo("records.1.tyo_maaratty_suorittaja")=request("job.user")
+	rs_tyo("records.1.tyo_deleted")="N"
+	rs_tyo("records.1.tyo_created")=now
+	rs_tyo("records.1.tyo_creator")=1
+	rs_tyo("records.1.tyo_modified")=now
+	rs_tyo("records.1.tyo_modifier")=1
+	processmsg(rs_tyo,"common.dbase.recordset.write")
+	
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("buffer.alkupvm")="2010-01-01"
+	msg("buffer.loppupvm")="2010-01-15"
+	msg("buffer.kirjaaja")=16
+	msg("job.workflow")="ansiolistan kierrätys"
+	msg("job.task")="tuntilistan kuittaaminen"
+	msg("job.title")="Kokeillaan lisätä uusi"
+	msg("log.user")="Alfons"
+	processMsg(msg,"Common.NAS.Workflow.Init")
+
+	output(msg)
+	
+End Sub

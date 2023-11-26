@@ -1,0 +1,51 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Email.Message.Delete
+'##		Purpose: Deletes message from message buffer
+'##		Created: 2008-04-01
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	work-path*
+'	message
+'		filename*
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+	dim msg as object=newmsg
+	msg("file.path")=request("work-path") & "\messages"
+	msg("file.name")=request("message.filename")
+	msg("file.new.path")=request("work-path") & "\messages\processed\" & now.tostring("yyyy-MM")
+	processmsg(msg,"common.filesystem.file.move")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("work-path")="C:\systemsgarden\nascomm\data\tiketti\imap4\messages"
+	msg("message.filename")="00000001.eml"
+	
+	processMsg(msg,"Common.Email.Message.Delete")
+	
+	output(msg)
+	
+End Sub

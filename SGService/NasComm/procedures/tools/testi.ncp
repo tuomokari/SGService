@@ -1,0 +1,31 @@
+﻿imports microsoft.visualbasic
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: tools.testi
+'//		Description	: (enter short description)
+'//		Created		: 2023-09-18 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	dim msg as object = newmsg()
+	msg("file.path")="c:\temp"
+	msg("file.name")="tmphui.txt"
+	msg("file.content")="Test append data höhöö.." & now & Environment.NewLine
+	ProcessMsg(msg,"Common.FileSystem.File.Append")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("my.value")="some value here"
+	ProcessMsg(msg,"onprocess")
+	ProcessMsg(msg,"tools.testi")
+	'output(msg.ContentView)
+	
+End Sub

@@ -1,0 +1,152 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.FTP.Folder.Replicate
+'##		Purpose: Replicates local folder to remote FTP server
+'##		Created: 2008-08-26
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	local
+'		folder
+'			path*				Absolute path to local folder
+'	remote
+'		folder
+'			path*				Relative path to remote folder
+'	server						FTP server definition
+'		name*					server address, required
+'		port					default=21
+'		passivemode				Y/N, default=N
+'		homedir					home directory, default=/
+'	account						FTP account parameters
+'		name					default="Anonymous"
+'		password				default=""
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+	ProcessFolder(request("local.folder.path"),request("remote.folder.path"))
+	
+End Sub
+
+
+private sub ProcessFolder(localPath as string, remotePath as string)
+
+	'	rekursiivinen rutiini joka vertaa muutoksia hakemistoittain
+	'	ja lähettää muuttuneet tiedostot etäserverille
+	
+	dim tmp as object=newmsg
+	dim ftp as object=newmsg
+
+	'	varmistetaan että hakemisto olemassa, ei anneta
+	'	kaatua virheeseen
+	
+	output("processing folder " & localPath)
+	
+	try
+		ftp("server.name")=request("server.name")
+		ftp("account.name")=request("account.name")
+		ftp("account.password")=request("account.password")
+		ftp("account.password")=request("account.password")
+		ftp("folder.remote.path")=remotePath
+		processmsg(ftp,"Common.FTP.RemoteFolder.Create")
+		output("folder created")
+	catch ex as exception
+		output("folder already existed")
+	end try
+	
+	'	luetaan hakemiston ohjaustiedosto muistiin
+	
+	dim ctlfile as object=newmsg
+	ctlfile("file.path")=localPath
+	ctlfile("file.name")="ftp_ctl.txt"
+	processmsg(ctlfile,"common.filesystem.file.read")
+	
+	dim ctlreg as object=newmsg
+	if ctlfile("file.content")>"" then ctlreg.contentdata=ctlfile("file.content")
+	
+	'	käsitellään hakemistossa olevat tiedostot
+	
+	tmp("folder.path")=localPath
+	processmsg(tmp,"common.filesystem.folder.listfiles")
+	for each file as object in tmp.items("files")
+	
+		if file("name")<>"ftp_ctl.txt" then 'ohjaustiedostoa ei siirretä
+		
+			'	luetaan tiedoston data muistiin
+			
+			dim filedata as object=newmsg
+			filedata("file.path")=localPath
+			filedata("file.name")=file("name")
+			processmsg(filedata,"common.filesystem.file.readbinary")
+			
+			'	suoritetaan siirto jos hash muuttunut
+			
+			dim fRef as string=replace(file("name"),".","_") 'täytyy poistaa nimestä pisteet
+			if filedata("file.content").GetHashCode.tostring <> ctlreg("files." & fRef & ".hashcode") then
+
+				output("transfering file " & localPath & "\" & file("name") & "  ->  " & remotePath & "/" & file("name"),now)
+				ftp.clear
+				ftp("server.name")=request("server.name")
+				ftp("account.name")=request("account.name")
+				ftp("account.password")=request("account.password")
+				ftp("account.password")=request("account.password")
+				ftp("file.content")=filedata("file.content")
+				ftp("file.remote.path")=remotePath
+				ftp("file.remote.name")=file("name")
+				processmsg(ftp,"common.ftp.remotefile.write")
+				ctlreg("files." & fRef & ".hashcode") = filedata("file.content").GetHashCode.tostring
+			else
+				output("file " & localPath & "\" & file("name") & " not changed")	
+			end if
+			
+		end if
+	next
+
+	'	tallennetaan ohjaustiedot
+
+	ctlfile("file.content")=ctlreg.contentdata
+	processmsg(ctlfile,"common.filesystem.file.write")
+	
+	'	kutsutaan rekursiivisesti jokaiselle alihakemistolle
+	
+	tmp.clear
+	tmp("folder.path")=localPath
+	processmsg(tmp,"common.filesystem.folder.listfolders")
+	for each folder as object in tmp.items("folders")
+		ProcessFolder(localPath & "\" & folder("name"), remotePath & "/" & folder("name"))
+	next
+	
+end sub
+
+
+Public Sub Simulate()
+	
+	'output("htrace on")
+	
+	dim msg as object = newmsg
+	msg("server.name")=env("test.ftp.server")
+	msg("account.name")=env("test.ftp.username")
+	msg("account.password")=env("test.ftp.password")
+	
+	msg("local.folder.path")="c:\temp\ftp-siirtotesti"
+	msg("remote.folder.path")="/siirtotesti"
+	
+	processMsg(msg,"Common.FTP.Folder.Replicate")
+	
+	output(msg)
+	
+End Sub

@@ -1,0 +1,61 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: test.perkkaus
+'//		Description	: (enter short description)
+'//		Created		: 2020-03-05 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	dim f as object=newmsg
+	f("file.path")="$mypath$"
+	f("file.name")="perkkaus.txt"
+	f("file.encoding")="binary"
+	processmsg(f,"common.filesystem.file.read")
+	'showcontent(f)
+	
+	dim lines() as string=split(f("file.content"),vbcrlf)
+	for each line as string in lines
+		dim skippaa as boolean=false
+		if not line.contains(".aspx") then skippaa=true
+		if line.contains("api.refreshmodules") then skippaa=true
+		if line.contains("\backups\") then skippaa=true
+		if line.contains("rs4.aspx") then skippaa=true
+		if line.contains("rs5.aspx") then skippaa=true
+		if not line.contains("_prod") then skippaa=true
+		if not line.contains("\entries\") then skippaa=true
+		if not skippaa then
+			'output(line)
+			dim flines() as string=split(system.io.file.readalltext(line),vbcrlf)
+			for each fline as string in flines
+				if fline.contains("api.refreshmodules") then
+					dim kommentoitu as boolean=false
+					for each ch as char in fline
+						select case ch
+							case " ",chr(9)
+							case "'": kommentoitu=true
+							case else: exit for
+						end select
+					next
+					if not kommentoitu then output(line)
+				end if
+			next
+		end if
+	next
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("my.value")="some value here"
+	ProcessMsg(msg,"test.perkkaus")
+	'output(msg.ContentView)
+	
+End Sub

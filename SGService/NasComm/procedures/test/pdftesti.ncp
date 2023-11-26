@@ -1,0 +1,56 @@
+﻿imports microsoft.visualbasic
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: test.pdftesti
+'//		Description	: (enter short description)
+'//		Created		: 2023-10-18 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	'	Creating NCBB instance
+	
+'    Dim assyFile As String = "$mypath$\bin\GeneratePDF.dll"
+'    If Not System.IO.File.Exists(assyFile) Then Throw New Exception("Assebly file not found: " & assyFile)
+'    Dim assy As System.Reflection.Assembly = System.Reflection.Assembly.LoadFrom(assyFile)
+'    If assy Is Nothing Then Throw New Exception("Could not load an assembly: " & assyFile)
+
+    Dim assyFile As String = "$mypath$\bin\TestiLuokka.dll"
+	assyFile=		"C:\A\SG\projects\SGService\SGService\NasComm\procedures\test\bin\TestiLuokka.dll"
+    If Not System.IO.File.Exists(assyFile) Then Throw New Exception("Assebly file not found: " & assyFile)
+    Dim assy As System.Reflection.Assembly = System.Reflection.Assembly.LoadFrom(assyFile)
+    If assy Is Nothing Then Throw New Exception("Could not load an assembly: " & assyFile)
+
+	dim instanceName as string="TestiLuokka.TestiLuokka"
+    dim ncbb as object = assy.CreateInstance(instanceName)
+    If ncbb Is Nothing Then Throw New Exception("Could not create class instance: " & instanceName)	
+	
+	'	Creating and processing message
+		output(ncbb.testaa())
+'	dim msg as object = newmsg
+'	msg("action")="recordset.read"
+'	msg.copyitems(request,"database","database")
+'	msg.copyitems(request,"recordset","recordset")
+'	'if request("recordset.compress")="Y" then request.copyitems(msg,"fields","field-references")
+'	ncbb.Process(msg)
+	
+	'	Returning values
+	
+'	request.copyitems(msg,"recordset","recordset")
+'	request.copyitems(msg,"records","records")
+'	if request("recordset.record-count")="" then request("recordset.record-count")="0" 'korjataan yhteensopivuusbugi
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("my.value")="some value here"
+	ProcessMsg(msg,"test.pdftesti")
+	'output(msg.ContentView)
+	
+End Sub

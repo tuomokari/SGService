@@ -1,0 +1,66 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Tyonkulut.Tyo.Haarauta
+'##		Purpose: Haarauttaa työn useampaan rinnakkain suoritettavaan tehtävään
+'##		Created: 2010-09-07
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	tyo
+'		id*
+'	tehtavat
+'		nimi*		lista tehtävistä joihin työ haarautuu
+'	kayttaja
+'		nimi*
+'		id*
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	dim s as string=""
+	
+	VerifyRequest 'request is verified against description
+	
+	'	haetaan nykyiset tiedot, kaatuu tähän jos jotain puuttuu
+	
+	processmsg(request,"common.tyonkulut.tyo.haetiedot")
+	
+	'	luodaan ja liitetään käsittelymuuttujat
+	
+	dim tyo as object=request.item("tiedot.tyo")
+	dim tehtava as object=request.item("tiedot.tehtava")
+	dim tyonkulku as object=request.item("tiedot.tyonkulku")
+	
+	'	varmistetaan että kaikki tehtävät löytyvät ennen siirron aloittamista
+	
+	dim tehtavanimet() as string=split(request("tehtavat.nimi"),",")
+	for each tehtavanimi as string in tehtavanimet
+		dim rs_tehtava as object=newmsg
+		rs_tehtava("recordset.query")=""
+	next
+
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("tyo.id")=4
+	msg("kayttaja.id")=15
+	msg("kayttaja.nimi")="Olli"
+	msg("tehtavat.nimi")="sovellustuki,sovelluskehitys"
+	processMsg(msg,"Common.Tyonkulut.Tyo.Haarauta")
+	
+End Sub

@@ -1,0 +1,54 @@
+﻿imports microsoft.visualbasic
+
+'	Common.DBase.RecordSet.UpdateUnique
+'	***********************************
+'
+'<request description>
+'
+'	database
+'		connection-string*			database connection string, default=env("default.database.connection-string")
+'	recordset
+'		query*
+'
+'</request description>
+
+
+sub Process
+
+	VerifyRequest()
+	
+	'	noudetaan päivitettävä tietue
+	
+	dim msg as object=newmsg
+	msg("database.connection-string")=request("database.connection-string")
+	msg("recordset.query")=request("recordset.query")
+	processmsg(msg,"common.dbase.recordset.read")
+	if msg("recordset.record-count")=0 then errbreak("query did not return any records",request("recordset.query"))
+	if msg("recordset.record-count")>1 then errbreak("query returned too many records",request("recordset.query"))
+	
+	'	siirretään tiedot bufferista kantasanomaan, scannataan
+	'	vain kentät jotka kysely palautti
+	
+	for each fld as object in msg.items("records.1")
+		if request.exists(fld.name) then fld.itemvalue=request(fld.name)
+	next
+	
+	'	päivitetään kantaan
+	
+	processmsg(msg,"common.dbase.recordset.write")
+	
+end sub
+
+
+sub Simulate
+
+	'	turhan vaarallinen simuloida
+
+'	dim msg as object = newmsg
+'	msg("recordset.query")="select * from naf_dep where dep_id=2"
+'	msg("recordset.compress")="N"
+'	ProcessMsg(msg,"Common.DBase2.RecordSet.UpdateUnique")
+'	output(msg)
+	
+end sub
+

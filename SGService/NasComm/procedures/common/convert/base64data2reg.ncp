@@ -1,0 +1,50 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: modules.tulityot.base64data2reg
+'//		Description	: (enter short description)
+'//		Created		: 2017-08-23 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+'public function Base64Encode(str as string) as string
+'	dim bytes() as byte=System.Text.Encoding.UTF8.GetBytes(str)
+'	return System.Convert.ToBase64String(bytes)
+'end function
+'
+'
+'public function Base64Decode(str as string) as string
+'	if str.contains("@") then
+'		return str
+'	else
+'		dim bytes() as byte=System.Convert.FromBase64String(str)
+'		return System.Text.Encoding.UTF8.GetString(bytes)
+'	end if
+'end function
+
+
+Public Sub Process()
+
+	dim data as string=request("base64data")
+	dim reg as object=request.item("result")
+	if data.contains("@") then
+		reg.contentdata=data
+	else
+		dim bytes() as byte=System.Convert.FromBase64String(request("base64data"))
+		reg.contentdata=System.Text.Encoding.UTF8.GetString(bytes)
+	end if
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg
+	dim rs as object=newmsg
+	rs("recordset.query")="select * from tulityot_lupa where lupa_id=14"
+	processmsg(rs,"common.dbase.recordset.read")
+	msg("base64data")=rs("records.1.lupa_lomakedata")
+	ProcessMsg(msg,"modules.tulityot.base64data2reg")
+	output(msg.ContentView)
+	
+End Sub

@@ -1,0 +1,23 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: tools.restartSite
+'//		Description	: (enter short description)
+'//		Created		: 2023-09-28 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+	request("eventlog.info")="Site Restarted"
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("my.value")="some value here"
+	ProcessMsg(msg,"tools.restartSite")
+	output(msg.ContentView)
+	
+End Sub

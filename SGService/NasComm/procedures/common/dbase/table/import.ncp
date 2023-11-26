@@ -1,0 +1,55 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.DBase.Table.Import
+'//		Description	: (enter short description)
+'//		Created		: 2008-02-11 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+'#message-def:
+'
+'	database
+'		connection-string*
+'	table
+'		name*
+'		id-field
+'		verify-update		sets import in slower update mode where each record is separately verified, default=N
+'	import
+'		data*
+'
+'#end
+
+Public Sub Process()
+
+	VerifyRequest("database.connection-string",env("default.database.connection-string"))
+	VerifyRequest
+
+	dim bb as object = newmsg
+	bb("database.connection-string")=request("database.connection-string")
+	bb("tables.1.name")=request("table.name")
+	bb("tables.1.id-field")=request("table.id-field")
+	bb("tables.1.verify-update")=request("table.verify-update")
+	bb("tables.1.content")=request("import.data")
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.db","tables.import","../bin")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'output("htrace on")
+
+	dim msg as object = NewMsg
+	msg("table.name")="naf_user"
+	ProcessMsg(msg,"Common.DBase.Table.Export")
+	output(msg.ContentView)
+
+	dim msg2 as object=newmsg
+	msg2("table.name")="naf_user"
+	msg2("table.id-field")="usr_id"
+	msg2("import.data")=msg("export.data")
+	ProcessMsg(msg2,"Common.DBase.Table.Import")
+	output(msg2.ContentView)
+	
+End Sub

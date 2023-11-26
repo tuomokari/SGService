@@ -1,0 +1,268 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Tyonkulut.Toiminto.Suorita
+'##		Purpose: Suorittaa valitun toiminnon, viittaus id:llä
+'##		Created: 2010-09-12
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	tyo
+'		id*
+'		tkbuf			dediikki puskurialue
+'	toiminto
+'		id*
+'	tehtava
+'		kommentti
+'	kayttaja
+'		nimi*
+'		id				lisätty laskutusta varten, tarvitaan laskuttajan id
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+private function ProsessoiToiminto(tyoID as integer, tehtavaID as integer, toimintoNimi as string) as integer
+
+	'	palauttaa toiminnon id:n jos löytyi, muuten nolla
+
+	dim s as string=""
+	
+	'	etsitään toimintoa nimellä tehtävästä
+	
+	dim rs_toiminto as object=newmsg
+	s="select * from tyonkulut_toiminto"
+	s+=" where toi_tehtava=" & tehtavaID
+	s+=" and toi_nimi='" & toimintoNimi & "'"
+	s+=" and toi_deleted='N'"
+	rs_toiminto("recordset.query")=s
+	processmsg(rs_toiminto,"common.dbase.recordset.read")
+	if rs_toiminto("recordset.record-count")<>"1" then return 0
+
+	'	etsitään työ
+	
+	dim rs_tyo as object=newmsg
+	s="select * from tyonkulut_tyo where tyo_id=" & tyoID
+	rs_tyo("recordset.query")=s
+	processmsg(rs_tyo,"common.dbase.recordset.read")
+	if rs_tyo("recordset.record-count")<>"1" then errbreak("työn palauttaminen epäonnistui")
+	
+	'	suoritetaan scriptit
+	
+	for i as integer = 1 to 3
+		if i=1 and rs_toiminto("records.1.toi_scripti")>"" then
+			dim tmp2 as object=newmsg
+			tmp2.contentdata=rs_toiminto("records.1.toi_parametridata")
+			tmp2("tyo.id")=tyoID
+			tmp2.item("buffer").contentdata=rs_tyo("records.1.tyo_datapuskuri")
+			tmp2.item("buffer").itemvalue="" 'saattaa tulla mössöä koska konffissa parametrit suoraan scriptin alla
+			processmsg(tmp2,rs_toiminto("records.1.toi_scripti"))
+		else if rs_toiminto("records.1.toi_scripti" & i)>"" then
+			dim tmp2 as object=newmsg
+			tmp2.contentdata=rs_toiminto("records.1.toi_parametridata" & i)
+			tmp2("tyo.id")=tyoID
+			tmp2.item("buffer").contentdata=rs_tyo("records.1.tyo_datapuskuri")
+			tmp2.item("buffer").itemvalue="" 'saattaa tulla mössöä koska konffissa parametrit suoraan scriptin alla
+			processmsg(tmp2,rs_toiminto("records.1.toi_scripti" & i))
+		end if
+	next
+	
+	return rs_toiminto("records.1.toi_id")
+	
+end function
+
+
+
+Public Sub Process()
+
+	dim s as string=""
+	dim tmp as object=newmsg
+	
+	VerifyRequest 'request is verified against description
+	
+	'	päivitetään spesiaalipuskurin sisältö työhön,
+	'	huolehditaan samalla ettei sössitä alkuperäisen sisältöä
+	
+	dim tyo as object=newmsg
+	tyo("recordset.query")="select * from tyonkulut_tyo where tyo_id=" & request("tyo.id")
+	processmsg(tyo,"common.dbase.recordset.readUnique")
+	dim x as object=newmsg
+	x.contentdata=tyo("tyo_datapuskuri")
+	x.item("tkbuf").contentdata=request.item("tyo.tkbuf").contentdata
+	tyo("tyo_datapuskuri")=x.contentdata
+	processmsg(tyo,"common.dbase.recordset.updateUnique")
+	
+	'	luetaan toiminnon, tehtävän ja työnkulun tiedot
+	
+	dim rs_toiminto as object=newmsg
+	s="select * from tyonkulut_toiminto,tyonkulut_tehtava,tyonkulut_tyonkulku"
+	s+=" where toi_id=" & request("toiminto.id")
+	s+=" and teh_id=toi_tehtava"
+	s+=" and tk_id=teh_tyonkulku"
+	rs_toiminto("recordset.query")=s
+	processmsg(rs_toiminto,"common.dbase.recordset.read")
+	if rs_toiminto("recordset.record-count")=0 then errbreak("toimintoa ei löytynyt")
+	dim toiminto as object=rs_toiminto.item("records.1")
+
+	'	suoritetaan mahdollinen prosessointi
+	
+	dim scriptiohjaus as object=newmsg
+	
+	for i as integer = 1 to 3
+		if i=1 and toiminto("toi_scripti")>"" then
+			dim tmp2 as object=newmsg
+			tmp2.contentdata=toiminto("toi_parametridata")
+			tmp2("tyo.id")=request("tyo.id")
+			tmp2.item("buffer").contentdata=x.contentdata
+			tmp2("kayttaja.nimi")=request("kayttaja.nimi")
+			tmp2("kayttaja.id")=request("kayttaja.id")
+			processmsg(tmp2,toiminto("toi_scripti"))
+			scriptiohjaus("tehtava_nimi")=tmp2("scriptiohjaus.tehtava_nimi")
+			scriptiohjaus("tavoiteaika")=tmp2("scriptiohjaus.tavoiteaika")
+			scriptiohjaus("kohde_id")=tmp2("scriptiohjaus.kohde_id")
+		else if toiminto("toi_scripti" & i)>"" then
+			dim tmp2 as object=newmsg
+			tmp2.contentdata=toiminto("toi_parametridata" & i)
+			tmp2("tyo.id")=request("tyo.id")
+			tmp2.item("buffer").contentdata=x.contentdata
+			tmp2("kayttaja.nimi")=request("kayttaja.nimi")
+			tmp2("kayttaja.id")=request("kayttaja.id")
+			processmsg(tmp2,toiminto("toi_scripti" & i))
+		end if
+	next
+	
+	'	suoritetaan mahdollinen on-exit
+	
+	if ProsessoiToiminto(request("tyo.id"),toiminto("teh_id"),"on-exit")>0
+		output("on-exit -käsittely suoritettu")
+	else
+		output("ei on-exit -käsittelyä")
+	end if
+
+	
+	'	etsitään uusi tehtävä
+	
+	dim uusitehtava as object=newmsg
+	toiminto("toi_ohjaus")=firstfound(scriptiohjaus("tehtava_nimi"),toiminto("toi_ohjaus")) 'saattaa olla että tulee scriptiltä
+	if toiminto("toi_ohjaus")>"" and toiminto("toi_ohjaus")<>"seuraava" then
+	
+		'	etsitään nimetty tehtävä samasta työnkulusta
+		
+		s="select * from tyonkulut_tehtava"
+		s+=" where teh_tyonkulku=" & toiminto("tk_id")
+		s+=" and teh_nimi='" & toiminto("toi_ohjaus") & "'"
+		s+=" and teh_deleted='N'"
+		uusitehtava("recordset.query")=s
+		processmsg(uusitehtava,"common.dbase.recordset.read")
+		if uusitehtava("recordset.record-count")=0 then
+			errbreak("tehtävää ei löytynyt: '" & toiminto("toi_ohjaus") & "'")
+		end if
+		uusitehtava=uusitehtava.item("records.1")
+		
+	else
+	
+		'	etsitään samasta työnkulusta järjestyksessä seuraava tehtävä
+
+		s="select * from tyonkulut_tehtava"
+		s+=" where teh_tyonkulku=" & toiminto("tk_id")
+		s+=" and teh_deleted='N'"
+		s+=" and teh_jarjestysnro>" & toiminto("teh_jarjestysnro")
+		s+=" order by teh_jarjestysnro"
+		uusitehtava("recordset.query")=s
+		processmsg(uusitehtava,"common.dbase.recordset.read")
+		if uusitehtava("recordset.record-count")=0 then
+			errbreak("tehtävää ei löytynyt: '" & toiminto("toi_ohjaus") & "'")
+		end if
+		uusitehtava=uusitehtava.item("records.1")
+		
+	end if
+	
+	'	haetaan työn tiedot käsittelykursoriin
+	
+	dim rs_tyo as object=newmsg
+	rs_tyo("recordset.query")="select * from tyonkulut_tyo where tyo_id=" & request("tyo.id")
+	processmsg(rs_tyo,"common.dbase.recordset.read")
+	tyo=rs_tyo.item("records.1")
+	
+	'	asetetaan seuraavan tehtävän tiedot
+	
+	tyo("tyo_tehtava")=uusitehtava("teh_id")
+	if scriptiohjaus("tavoiteaika")="" then
+		tyo("tyo_tavoiteaika")=dateadd(dateinterval.hour,uusitehtava("teh_tavoiteaika"),now)
+	else
+		tyo("tyo_tavoiteaika")=cdate(scriptiohjaus("tavoiteaika")).tostring("yyyy-MM-dd HH:mm")
+	end if
+	if scriptiohjaus("kohde_id")>"" then
+		dim y as object=newmsg
+		y.contentdata=tyo("tyo_datapuskuri")
+		y("kohde_id")=scriptiohjaus("kohde_id")
+		tyo("tyo_datapuskuri")=y.contentdata
+		tyo("tyo_kohdeliitos_id")=scriptiohjaus("kohde_id")
+	end if
+			
+	s=now.tostring("d.M.yyy HH:mm") & " / " & request("kayttaja.nimi") & vbcrlf
+	s+=toiminto("teh_nimi") & " --> " & uusitehtava("teh_nimi") & vbcrlf & vbcrlf
+	s+=toiminto("toi_nimi")
+	if request("tehtava.kommentti")>"" then s+=":" & vbcrlf & request("tehtava.kommentti")
+	s+=vbcrlf & vbcrlf
+	tyo("tyo_loki")=tyo("tyo_loki") & vbcrlf & vbcrlf & s
+	tyo("tyo_ed_kasittelija")=request("kayttaja.nimi")
+	tyo("tyo_edellinen_kasittelija_id")=request("kayttaja.id")
+	tyo("tyo_edellinen_tehtava_id")=toiminto("teh_id")
+	tyo("tyo_edellinen_toiminto_id")=toiminto("toi_id")
+	tyo("tyo_siirtynyt")=now
+	processmsg(rs_tyo,"common.dbase.recordset.write")
+
+	'	suoritetaan mahdollinen on-init
+	
+	if ProsessoiToiminto(request("tyo.id"),uusitehtava("teh_id"),"on-init")>0
+		output("on-init -käsittely suoritettu")
+	else
+		output("ei on-init -käsittelyä")
+	end if
+	
+	'	suoritetaan mahdollinen on-process
+	
+	dim toimintoID as integer=ProsessoiToiminto(request("tyo.id"),uusitehtava("teh_id"),"on-process")
+	if toimintoID>0 then
+	
+		output("on-process -käsittely suoritettu")
+		
+		'	suoritetaan tämän rutiinin rekursiivinen kutsu,
+		'	näin saadaan pitkäkin prosessointiketju hoidettua ilman viiveitä
+		
+		tmp.clear
+		tmp("tyo.id")=request("tyo.id")
+		tmp("toiminto.id")=toimintoID
+		tmp("kayttaja.nimi")="Järjestelmä"
+		processmsg(tmp,"common.tyonkulut.toiminto.suorita")
+		
+	else
+	
+		output("ei on-process -käsittelyä")
+		
+	end if
+
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("tyo.id")=311
+	msg("toiminto.id")=41
+	'msg("tyo.tkbuf.lasku_id")=71
+	msg("kayttaja.nimi")="Sanna"
+	msg("tehtava.kommentti")="Sanna kokeilee scriptiä"
+	
+	processMsg(msg,"Common.Tyonkulut.Toiminto.Suorita")
+	
+End Sub

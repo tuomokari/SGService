@@ -1,0 +1,46 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.FileSystem.File.ReadBinary
+'##		Purpose: Reads binary file content
+'##		Created: 2008-03-05
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	file
+'		path			notnull
+'		name			notnull
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+	
+	VerifyRequest 'request is verified against description
+
+	dim msg as object=newmsg
+	msg("file.encoding")="binary"
+	msg("file.path")=request("file.path")
+	msg("file.name")=request("file.name")
+	processmsg(msg,"common.filesystem.file.read")
+	request("file.content")=msg("file.content")
+
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = newmsg()
+	msg("file.path")="C:\Temp"
+	msg("file.name")="tmp.txt"
+	procedure("Common.FileSystem.File.ReadBinary").process(msg)
+	output(msg.contentview)
+	
+End Sub

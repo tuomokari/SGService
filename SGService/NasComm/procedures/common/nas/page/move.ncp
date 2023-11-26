@@ -1,0 +1,70 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+imports microsoft.visualbasic
+
+'	Common.NAS.Page.Move
+'	********************
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("page.reference.id","")
+	VerifyRequest("page.reference.short-name","")
+	VerifyRequest("target-client.wait-answer","Y")
+	
+	if request("page.reference.id")="" and request("page.reference.short-name")="" then
+		errbreak("page reference information missing")
+	end if
+
+	VerifyRequest("target-page.reference.id","")
+	VerifyRequest("target-page.reference.short-name","")
+	
+	if request("target-page.reference.id")="" and request("target-page.reference.short-name")="" then
+		errbreak("target page reference information missing")
+	end if
+
+	VerifyRequest("target-page.location","last")
+	VerifyRequest("target-client.name","NAS")
+	VerifyRequest("target-client.timeout",10)
+
+	'	Transferring request to application message
+	
+	dim msg as object = newmsg
+	msg("action")="move_page"
+	msg("page-ref.id")=request("page.reference.id")
+	msg("page-ref.name")=request("page.reference.short-name")
+	msg("target.page-ref.id")=request("target-page.reference.id")
+	msg("target.page-ref.name")=request("target-page.reference.short-name")
+	if request("target-page.location")="last" then
+		msg("target.position")="last"
+	else
+		msg("target.position.nameref")=request("target-page.location")
+	end if
+	
+	'	Executing application processing
+
+	if request("target-client.wait-answer")="Y" then
+		output("trace","sending request to target client",request("target-client.name"),request("target-client.timeout"))
+		ProcessApplicationRequest(msg,request("target-client.name"),request("target-client.timeout"))
+		if msg("page.local-id")>"" then
+			request("page.id")=msg("page.local-id")
+		end if
+	else
+		output("trace","sending request to target client",request("target-client.name"))
+		AppendApplicationRequest(msg,request("target-client.name"))
+	end if
+	
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("page.reference.short-name")="nascomm_testing"
+	msg("target-page.reference.short-name")="rootpage"
+	msg("location")="last"
+	ProcessMsg(msg,"Common.NAS.Page.Move")
+	output(msg)
+	
+end sub
+

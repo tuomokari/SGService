@@ -1,0 +1,83 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.NAS.Admin.ImportSystemTables
+'##		Purpose: Imports system table data, CLEARS THE TABLES
+'##		Created: 2008-02-28
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	database
+'		connection-string
+'	file
+'		name*
+'		path
+'	tables
+'		delete-content			Y/N, deletes content from tables before import, default=Y
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest
+
+	output("trace","reading content from input file",request("file.path"),request("file.name"))
+	dim f as object=newmsg
+	f("file.name")=request("file.name")
+	f("file.path")=request("file.path")
+	processmsg(f,"common.filesystem.file.read")
+	dim data as string=f("file.content")
+	
+	dim msg as object=newmsg
+	dim cmd as object=newmsg
+	msg("database.connection-string")=request("database.connection-string")
+	cmd("database.connection-string")=request("database.connection-string")
+	
+	output("trace","importing tables")
+	do until data=""
+		dim prm,val as string
+		unpack(data,prm,val)
+		select case prm
+			case "table.name": msg("table.name")=val
+			case "table.id-field": msg("table.id-field")=val
+			case "export.data"
+				if request("tables.delete-content")="Y" then
+					output("trace","deleting content from table",msg("table.name"))
+					cmd("command.sql")="delete from " & msg("table.name")
+					processmsg(cmd,"common.dbase.command.execute")
+				end if
+				output("trace","importing table",msg("table.name"),msg("table.id-field"))
+				msg("import.data")=val
+				processmsg(msg,"common.dbase.table.import")
+				'output(msg)
+				'break
+			case "export.continue-data"
+				output("trace","continue importing table",msg("table.name"),msg("table.id-field"))
+				msg("import.data")=val
+				processmsg(msg,"common.dbase.table.import")
+			case else
+				errbreak("invalid content parameter",prm,val)
+		end select
+	loop
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("file.name")="nas_tbl_export.txt"
+	msg("file.path")="c:\temp"
+	processMsg(msg,"Common.NAS.Admin.ImportSystemTables")
+	
+End Sub

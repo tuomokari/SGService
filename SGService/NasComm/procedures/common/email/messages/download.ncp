@@ -1,0 +1,52 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Email.Messages.Download
+'##		Purpose: Downloads messages from mail server (POP3/IMAP4) into local working folder
+'##		Created: 2008-03-19
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	server
+'		name*
+'		account
+'			username
+'			password
+'	messages
+'		limit				Limits amound of downloaded messages, default=100
+'		keep-original		Deletes messages after download if N, default=Y
+'		work-folder			Absolute path where messages are processed
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest 'request is verified against description
+	
+	dim bb as object = newmsg
+	bb.copyitems(request)
+	bb("work-path")=client("cluster.path") & "\data\email\download"
+	
+	output("htrace","sending download request")
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.email","messages.download","../bin")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = newMsg
+	
+	processMsg(msg,"Common.Email.Messages.Download")
+	
+	output(msg)
+	
+End Sub

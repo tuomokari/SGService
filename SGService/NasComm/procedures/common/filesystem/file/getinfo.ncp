@@ -1,0 +1,42 @@
+﻿imports microsoft.visualbasic
+imports system.io
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.FileSystem.File.GetInfo
+'//		Description	: (enter short description)
+'//		Created		: 2014-03-12 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	VerifyRequest("file.name","!!!")
+	VerifyRequest("file.path","!!!")
+	dim fullName as string = request("file.path") & "\" & request("file.name")
+	if file.exists(fullName) then
+		request("file.found") = "Y"
+		Dim fi As New System.IO.FileInfo(fullName)
+		request("file.size.bytes") = fi.Length
+		request("file.size.kbytes") = (fi.Length/1024).tostring("0.0")
+		request("file.size.mbytes") = (fi.Length/(1024*1024)).tostring("0.0")
+		request("file.extension")=mid(Path.GetExtension(fullName),2)
+		request("file.basename")=Path.GetFileNameWithoutExtension(fullName)
+	else
+		request("file.found") = "N"
+	end if
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object=newmsg
+	msg("file.name")="nas_error.txt"
+	msg("file.path")="c:\temp"
+	ProcessMsg(msg,"Common.FileSystem.File.GetInfo")
+	output(msg.ContentView)
+	
+End Sub

@@ -1,0 +1,63 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.FTP.RemoteFolder.Create
+'##		Purpose: Creates new folder on FTP server
+'##		Created: 2008-08-25
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	server				FTP server definition
+'		name			server address, notnull
+'		port			default=21
+'		passivemode		Y/N, default=N
+'		homedir			home directory, default=/
+'
+'	account				FTP account parameters
+'		name			default="Anonymous"
+'		password		default=""
+'	folder
+'		remote
+'			path		remote path, default="/"
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest
+	
+	dim bb as object = newmsg
+	bb("ftp.server")=request("server.name")
+	bb("ftp.port")=request("server.port")
+	bb("ftp.passivemode")=request("server.passivemode")
+	bb("ftp.username")=request("account.name")
+	bb("ftp.password")=request("account.password")
+	bb("ftp.homedir")=request("server.homedir")
+	bb("ftp.remotepath")=request("folder.remote.path")
+	
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.ftp","folder.create","../bin")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'output("htrace on")
+	
+	dim msg as object = newmsg
+	msg("server.name")=env("test.ftp.server")
+	msg("account.name")=env("test.ftp.username")
+	msg("account.password")=env("test.ftp.password")
+	msg("folder.remote.path")="testing_1"
+	ProcessMsg(msg,"Common.FTP.RemoteFolder.Create")
+	output(msg)
+	
+End Sub

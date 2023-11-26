@@ -1,0 +1,51 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.Crypt.Decrypt
+'//		Description	: Decrypt with quick key (uses AES)
+'//		Created		: 2008-02-11 / OP
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	VerifyRequest("crypt.key","!!!")
+	VerifyRequest("text.cipher","!!!")
+
+	dim key as string=request("crypt.key")
+	
+	dim key32 as string=""
+	do until len(key32)>=32: key32+=key: loop
+	key32=left(key32,32)
+	
+	dim key16 as string=""
+	do until len(key16)>=16: key16+=key: loop
+	key16=left(key16,16)
+	
+	dim msg as object=newmsg
+	msg("text.cipher")=request("text.cipher")
+	msg("aes.key")=key32
+	msg("aes.iv")=key16
+	processmsg(msg,"common.crypt.aes.decrypt")
+	
+	request("text.plain")=msg("text.plain")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("text.plain")="some value here"
+	msg("crypt.key")="myKey"
+	ProcessMsg(msg,"Common.Crypt.Encrypt")
+	output(msg.ContentView)
+	msg("text.plain")=""
+	ProcessMsg(msg,"Common.Crypt.Decrypt")
+	output(msg.ContentView)
+	
+End Sub

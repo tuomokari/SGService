@@ -1,0 +1,52 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: tools.vaihda_monitorointi
+'//		Description	: (enter short description)
+'//		Created		: 2021-02-16 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	dim juuret as object=newmsg
+	juuret("folder.path")="d:\systemsgarden\sites"
+	ProcessMsg(juuret,"Common.FileSystem.Folder.ListFolders")
+	'showcontent(juuret)
+	for each juuri as object in juuret.items("folders")
+		dim saitit as object=newmsg
+		saitit("folder.path")="d:\systemsgarden\sites\" & juuri("name")
+		ProcessMsg(saitit,"Common.FileSystem.Folder.ListFolders")
+		for each saitti as object in saitit.items("folders")
+			dim f as object=newmsg
+			f("file.path")=saitti("path") & "\" & saitti("name") & "\config"
+			f("file.name")="startup.register"
+			f("file.encoding")="binary"
+			processmsg(f,"common.filesystem.file.read")
+			dim teksti as string=f("file.content")
+			if teksti.contains("https://valvomo-fe-prod.app08.systemsgarden.com/entries/saittisanoma.aspx") then
+				output("korvattava",f("file.path"))
+				'if f("file.path").contains("_test") then
+					output("korvataan konffi")
+					teksti=replace(teksti,"https://valvomo-fe-prod.app08.systemsgarden.com/entries/saittisanoma.aspx","https://valvomo-be-prod.app10.systemsgarden.com/entries/saittisanoma_v01.aspx")
+					f("file.content")=teksti
+					processmsg(f,"common.filesystem.file.write")
+				'end if
+			end if
+			'showcontent(f)
+		next
+	next
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object=newmsg
+	ProcessMsg(msg,"tools.vaihda_monitorointi")
+	output(msg.ContentView)
+	
+End Sub

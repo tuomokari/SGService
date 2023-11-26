@@ -1,0 +1,111 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: tools.datasync.serverside
+'//		Description	: (enter short description)
+'//		Created		: 2018-11-20 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	'	vastaanotetaan datasync-message
+	
+	dim msg as object=newmsg
+	msg.contentdata=request("datasync-message")
+	dim byteLimit as integer=200 * 1024
+	
+	'request("dummy")=msg.contentview
+	'showcontent(msg)
+	
+	'	prosessoidaan tauluja, keskeytetään jos palautettava data kasvaa liikaa
+	
+	dim loopCount as integer=0
+	for each tbl as object in msg.items("tables")
+		output("prosessoidaan taulu " & tbl("name"))
+		
+		'	hätäjarru
+		
+		loopCount+=1
+		if loopCount>100 then
+			output("kierroslaksuri pysäytti")
+			exit for
+		end if
+			
+		'	poistutaan kun dataa on tullut tarpeeksi pakettiin
+		
+		if msg.contentdata.length > byteLimit then
+			output("dataa löytyi paketista riittävä määrä, poistutaan",msg.contentdata.length)
+			exit for
+		end if
+		
+		'	lasketaan summittainen tietueet koko kyselemällä pätkä datasta
+		'	ja katsomalla mitä palautuu
+		
+		dim rs as object=newmsg
+		dim s as string="select top 10 * from " & tbl("name")
+		s+=" where " & tbl("ref") & "_modified > '" & tbl("last-modified") & "'"
+		s+=" order by " & tbl("ref") & "_modified"
+		rs("recordset.query")=s
+		processmsg(rs,"common.dbase.recordset.read")
+		dim recQty as integer=firstfound(rs("recordset.record-count"),0)
+		if recQty=0 then
+			output("ei dataa")
+			tbl("record-count")=0
+		elseif recQty<10 then
+			output("saatiin koko data",recQty)
+			tbl("tabledata")=rs.contentdata
+			tbl("record-count")=recQty
+		else
+		
+			'	dataa on tulossa yli 10 tietuetta, saattaa olla huomattavasti
+			'	enemmän, arvioidaan palautuneen datan määrästä kuinka paljon
+			'	tavaraa pakettiin mahtuu ja suoritetaan kysely
+			
+			dim recBytes as integer=rs.contentdata.length / 10
+			dim bytesLeft as integer=byteLimit - msg.contentdata.length
+			dim recs as integer=bytesLeft / recBytes
+			
+			output("haetaan arvioitu määrä dataa",recBytes & " tavua per tietue",bytesLeft & " vapaata tilaa",recs & " tietuetta")
+			rs.clear
+			s="select top " & recs & " * from " & tbl("name")
+			s+=" where " & tbl("ref") & "_modified > '" & tbl("last-modified") & "'"
+			s+=" order by " & tbl("ref") & "_modified"
+			rs("recordset.query")=s
+			'showcontent(rs)
+			processmsg(rs,"common.dbase.recordset.read")
+			recQty=rs("recordset.record-count")
+			tbl("tabledata")=rs.contentdata
+			tbl("record-count")=recQty
+			if recQty=recs then
+				output("riittävä määrä dataa palautui")
+				exit for
+			else
+				output("dataa palautui vähemmän kuin pyydettiin, jatketaan seuraavaan tauluun",recQty)
+			end if
+		end if
+	next
+	
+	'	palautetaan datasync-message
+	
+	output("palautetaan data kutsujalle",msg.contentdata.length)
+	request("datasync-message")=msg.contentdata
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim dsm as object=newmsg
+	dsm("tables.1.name")="itselleluovutus_dokumentti"
+	dsm("tables.1.ref")="dok"
+	dsm("tables.1.last-modified")="2018-11-20 00:00:00"
+	
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("datasync-message")=dsm.contentdata
+	ProcessMsg(msg,"tools.datasync.serverside")
+	output(msg.item("datasync-message").contentdata.length)
+	'output(msg.ContentView)
+	
+End Sub

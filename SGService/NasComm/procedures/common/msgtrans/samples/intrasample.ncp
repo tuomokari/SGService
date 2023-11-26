@@ -1,0 +1,74 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.MsgTrans.Samples.Sample1
+'//		Description	: Lähettää toiseen clusteriin NAS-lokikirjoitussanoman
+'//		Created		: 2008-01-22 / OP
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	'	luodaan siirrettävä sanoma
+	
+	dim msg as object = NewMsg
+	msg("log-text")="Kokeillaan kirjoittaa tietoa toisen NAS-saitin lokiin"
+	msg("msgtrans.remote.action")="common.nas.system.writelog"
+	
+	'	kirjoitetaan lähetysjonoon
+	
+	msg("msgtrans.local.output.queue")="extra_out"
+	processmsg(msg,"common.msgtrans.message.append")
+	
+	'	suoritetaan sanomasiirto
+	
+	msg.clear
+	msg("msgtrans.local.input.queue")="intra_in"
+	msg("msgtrans.local.output.queue")="extra_out"
+	msg("msgtrans.remote.input.queue")="extra_in"
+	msg("msgtrans.remote.output.queue")="intra_out"
+	msg("msgtrans.connection.type")="filesystem"
+	msg("msgtrans.remote.cluster.path")="c:\temp\msgtrans_test"
+	processmsg(msg,"Common.MsgTrans.Messages.Exchange")
+	
+	'	prosessoidaan saapuneet sanomat
+
+	dim remotemsg as object=newmsg
+	dim loopLimiter=500
+	msg.clear
+	
+	'// luetaan seuraava saapunut sanoma, aloitetaan käsittelysilmukka
+	
+	msg("msgtrans.local.input.queue")="intra_in"
+	processmsg(msg,"Common.MsgTrans.Message.Fetch")
+	do while msg("msgtrans.message.found")="Y"
+	
+		'// rajoitetaan kierrosmäärää sille varalle että tulee onglemia
+		
+		loopLimiter-=1
+		if loopLimiter<=0 then exit do
+		
+		'// luetaan saapunut data sanomaan,
+		'// käynnistetään vastaanotetun sanoman sisään määritetty prosessi
+		
+		remotemsg.contentdata=msg("msgtrans.message.content")
+		procedure(remotemsg("msgtrans.remote.action")).process(remotemsg)
+		
+		'// poistetaan käsitelty sanoma, noudetaan seuraava
+		
+		procedure("Common.MsgTrans.Message.Delete").process(msg)
+		processmsg(msg,"Common.MsgTrans.Message.Fetch")
+		
+	loop
+
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg
+	ProcessMsg(msg,"Common.MsgTrans.Samples.IntraSample")
+	
+End Sub

@@ -1,0 +1,70 @@
+﻿imports microsoft.visualbasic
+
+'	Common.FTP.RemoteFolder.List
+'	****************************
+
+'<request description>
+'
+'	server				FTP server definition
+'		name			server address, notnull
+'		port			default=21
+'		passivemode		Y/N, default=N
+'		homedir			home directory, default=/
+'
+'	account				FTP account parameters
+'		name			default="Anonymous"
+'		password		default=""
+'	folder
+'		remote
+'			path		remote path, default="/"
+'		file-limit		limits the number of listed files, default=100
+'
+'</request description>
+
+sub Process
+
+	VerifyRequest
+	
+	dim bb as object = newmsg
+	bb("ftp.server")=request("server.name")
+	bb("ftp.port")=request("server.port")
+	bb("ftp.passivemode")=request("server.passivemode")
+	bb("ftp.username")=request("account.name")
+	bb("ftp.password")=request("account.password")
+	bb("ftp.homedir")=request("server.homedir")
+	bb("ftp.remotepath")=request("folder.remote.path")
+	bb("list.item-limit")=request("folder.file-limit")
+	
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.ftp","folder.list","../bin")
+	
+	'	Returning values to request
+	
+	for each item as object in bb.items("files")
+		request("files." & item.name & ".name")=item("remotename")
+		request("files." & item.name & ".path")=item("remotepath")
+		request("files." & item.name & ".size")=item("remotesize")
+		request("files." & item.name & ".date")=item("date")
+	next
+	for each item as object in bb.items("folders")
+		request("subfolders." & item.name & ".name")=substr(item("remotepath"),"/",3)
+		request("subfolders." & item.name & ".path")=item("remotepath")
+		request("subfolders." & item.name & ".date")=item("date")
+	next
+
+end sub
+
+
+sub Simulate
+
+	'output("htrace on")
+	
+	dim msg as object = newmsg
+	msg("server.name")=env("test.ftp.server")
+	msg("account.name")=env("test.ftp.username")
+	msg("account.password")=env("test.ftp.password")
+	msg("folder.file-limit")=10
+	ProcessMsg(msg,"Common.FTP.RemoteFolder.List")
+	output(msg)
+	
+end sub
+

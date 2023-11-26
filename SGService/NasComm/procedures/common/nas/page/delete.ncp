@@ -1,0 +1,55 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+imports microsoft.visualbasic
+
+'	Common.NAS.Page.Delete
+'	**********************
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("page.reference.id","")
+	VerifyRequest("page.reference.short-name","")
+	VerifyRequest("target-client.name","NAS")
+	VerifyRequest("target-client.timeout",10)
+	VerifyRequest("target-client.wait-answer","Y")
+	
+	if request("page.reference.id")="" and request("page.reference.short-name")="" then
+		errbreak("page reference information missing")
+	end if
+
+	VerifyRequest("target-cell.name","NAS")
+	VerifyRequest("target-cell.timeout",10)
+
+	'	Transferring request to BB connection
+	
+	dim msg as object = newmsg
+	msg("action")="remove_page"
+	msg("page-ref.id")=request("page.reference.id")
+	msg("page-ref.name")=request("page.reference.short-name")
+
+	'	Executing application processing
+
+	if request("target-client.wait-answer")="Y" then
+		output("trace","sending request to target client",request("target-client.name"),request("target-client.timeout"))
+		ProcessApplicationRequest(msg,request("target-client.name"),request("target-client.timeout"))
+		if msg("page.local-id")>"" then
+			request("page.id")=msg("page.local-id")
+		end if
+	else
+		output("trace","sending request to target client",request("target-client.name"))
+		AppendApplicationRequest(msg,request("target-client.name"))
+	end if
+	
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("page.reference.short-name")="nascomm_testing"
+	ProcessMsg(msg,"Common.NAS.Page.Delete")
+	output(msg)
+	
+end sub
+

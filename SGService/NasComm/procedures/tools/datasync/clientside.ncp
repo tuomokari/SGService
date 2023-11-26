@@ -1,0 +1,161 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: tools.datasync.clientside
+'//		Description	: (enter short description)
+'//		Created		: 2018-11-20 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	'	luodaan sanoma, asetetaan pyynnöt
+	
+	dim msg as object=newmsg
+
+	output("alustetaan pyyntö")
+	appendtable(msg,"itselleluovutus_dokumentti","dok")
+	'appendtable(msg,"itselleluovutus_tilaus","til")
+	'appendtable(msg,"itselleluovutus_tyytyvaisyyskysely","tyk")
+	'appendtable(msg,"mestanvastaanotto_dokumentti","dok")
+	'appendtable(msg,"mestanvastaanotto_tilaus","til")
+	'appendtable(msg,"mestanvastaanotto_yhteyshenkilo","yht")
+	'appendtable(msg,"tuntipankki_arkipyha","ap")
+	'appendtable(msg,"tuntipankki_kirjaus","kir")
+	'appendtable(msg,"tuntipankki_korvaus","kor")
+	'appendtable(msg,"tuntipankki_kustannus","kus")
+	'appendtable(msg,"tuntipankki_pekkassaldo","ps")
+	'appendtable(msg,"tuntipankki_saldo","sal")
+	'appendtable(msg,"tuntipankki_saldokorjaus","sk")
+	'appendtable(msg,"tuntipankki_tilaus","til")
+	'appendtable(msg,"tuntipankki_tilikausi","tk")
+	'appendtable(msg,"tuntipankki_tilikausi_saldo","tks")
+	'appendtable(msg,"tuntipankki_vuoro","vuo")
+	'appendtable(msg,"yleiset_kayttaja","kay")
+	'showcontent(msgreg)
+	
+	'	lähetetään sanoma käsittelijälle, keskeytetään virheeseen
+	'	jos vastaus muuta kuin ok
+	
+	output("lähetetään pyyntö")
+	dim ds as object=newmsg
+	ds("url")="https://alupro-fe-prod.app08.systemsgarden.com/entries/datasync.aspx"
+	ds("fields.datasync-message")=msg.contentdata
+	ds("result.encoding")="binary"
+	processmsg(ds,"common.http.post")
+	'showcontent(ds)
+	'showcontent(findstr(ds("response"),"dok_tunniste","dok_kiinnitys_kuvat"))
+	msg.contentdata=ds("response")
+	'showcontent(msg)
+	if msg("result.message")<>"OK" then errbreak("datasync failed",msg("result.code"),msg("result.message"),msg("result.debug-info"))
+	
+	'	prosessoidaan palautunut tauludata taulu kerrallaan,
+	'	serversidessä on suojatoiminto joka estää palautusta
+	'	kasvamasta liikaa, saattaa olla että osassa tauluista
+	'	ei mitään paluudataa ole
+	
+	output("prosessoidaan saapunut tauludata")
+	for each tbl as object in msg.items("tables")
+		output("prosessoidaan taulua",tbl("name"))
+		if tbl("tabledata")>"" then
+			dim rs2 as object=newmsg
+			rs2.contentdata=tbl("tabledata")
+			'showcontent(rs2)
+			for each rec2 as object in rs2.items("records")
+				processRecord(tbl("name"),tbl("ref"),rec2)
+'				showcontent(rec2)
+'				dim rs1 as object=newmsg
+'				rs1("recordset.query")="select * from " & tbl("table") & " where " & tbl("ref") & "_id=" & rec2(tbl("ref") & "_id")
+'				processmsg(rs1,"common.dbase.recordset.read")
+'				rs1.item("records.1").copyitems(rec2)
+'				'showcontent(rs1)
+'				processmsg(rs1,"common.dbase.recordset.write")
+'				showcontent(rs1)
+			next
+		end if
+	next
+	
+End Sub
+
+
+private sub ProcessRecord(tableName as string,tableRef as string,recordData as object)
+
+	'	onko kyseessä update vai insert?
+	
+	dim rs as object=newmsg
+	dim idField as string=tableRef & "_id"
+	rs("recordset.query")="select * from " & tableName & " where " & idField & "=" & recordData(idField)
+	processmsg(rs,"common.dbase.recordset.read")
+	if rs("recordset.record-count")="1" then
+		dim cmd as string="update " & tableName & " set "
+		dim itemCount as integer=0
+		for each item as object in recordData.subitems
+			if item.name<>idField then
+				itemCount+=1
+				if itemCount>1 then cmd+=","
+				cmd+=item.name & "=" & sqlFmt(item.itemvalue)
+			end if
+		next
+		cmd+=" where " & idField & "=" & recordData(idField)
+		showcontent(cmd)
+	else
+		dim cmd as string="insert into " & tableName & " ("
+		dim itemCount as integer=0
+		for each item as object in recordData.subitems
+			itemCount+=1
+			if itemCount>1 then cmd+=","
+			cmd+=item.name
+		next
+		cmd+=") values ("
+		itemCount=0
+		for each item as object in recordData.subitems
+			itemCount+=1
+			if itemCount>1 then cmd+=","
+			cmd+=sqlFmt(item.itemvalue)
+		next
+		cmd+=")"
+		showcontent(cmd)
+	end if
+end sub
+
+
+private function SqlFmt(value as string) as string
+	if value="" then return "null"
+	if isnumeric(value) then return value
+	try
+		dim d as date=cdate(value)
+		return "'" & d.tostring("yyyy-MM-dd HH:mm:ss") & "'"
+	catch ex as exception
+	end try
+	value=replace(value,"'","''")
+	return "'" & value & "'"
+end function
+
+
+private sub AppendTable(req as object,tableName as string,tableRef as string)
+
+	dim rs as object=newmsg
+	rs("recordset.query")="select max(" & tableRef & "_modified) as maxvalue from " & tableName
+	processmsg(rs,"common.dbase.recordset.read")
+	dim item as object=req.newitem("tables")
+	item("name")=tableName
+	item("ref")=tableRef
+	if rs("records.1.maxvalue")>"" then
+		'item("last-modified")=cdate(rs("records.1.maxvalue")).tostring("yyyy-MM-dd HH:mm:ss")
+		item("last-modified")="2018-11-20 00:00:00"
+	else
+		item("last-modified")="2010-01-01 00:00:00"
+	end if
+	
+end sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	ProcessMsg(msg,"tools.datasync.clientside")
+	
+End Sub

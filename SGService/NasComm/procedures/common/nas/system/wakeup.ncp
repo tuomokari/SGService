@@ -1,0 +1,55 @@
+﻿imports system.net
+imports system.io
+imports system.text
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.nas.system.wakeup
+'//		Description	: wake up this site
+'//		Created		: 2018-12-12 / sg/tk
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+	try
+		' get site URL:
+		if env("wakeup.url") = "" then
+			'return
+			env("wakeup.url")="/default.aspx"
+		end if
+		dim msg as object = NewMsg
+		ProcessMsg(msg,"common.nas.system.getregister") ' default=startup.register
+		msg("url")=msg("reg.system.site.url") & env("wakeup.url")
+		output("make http get to " & msg("url"))
+		' http get -> ============================================
+'		processMsg(msg,"Common.HTTP.Get")
+'		virhe common.HTTP.Get-kutsussa aiheutti koko prosessin kipin - siksi pitää get-kutsu ajaa tässä samassa try-catchissä, ja vielä lyhyellä time-outilla:
+	    Dim webreq As WebRequest = WebRequest.Create(msg("url"))
+		webreq.Timeout = 1000
+		webreq.Credentials = CredentialCache.DefaultCredentials
+	    Dim result As WebResponse = webreq.GetResponse()
+	    Dim stream As Stream = result.GetResponseStream()
+	    Dim encode As Encoding = System.Text.Encoding.GetEncoding("utf-8")
+	    Dim reader As New StreamReader(stream, encode)
+		request("result.content")=reader.readtoend
+		reader.close
+		result.close
+		' <- http get ============================================
+
+
+
+		output("done")
+	catch ex as exception
+		output(ex.message)
+	end try
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	ProcessMsg(msg,"common.nas.system.wakeup")
+	'output(msg.ContentView)
+	
+End Sub

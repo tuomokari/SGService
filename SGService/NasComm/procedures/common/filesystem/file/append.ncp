@@ -1,0 +1,68 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.FileSystem.File.Append
+'//		Description	: Appends content to text file
+'//		Created		: 2008-02-08 / OP
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+'<request description>
+'
+'	file
+'		path			notnull
+'		name			notnull
+'		content
+'		encoding		default=UTF-8
+'
+'</request description>
+
+
+Public Sub Process()
+
+	VerifyRequest
+
+	Dim errMsg As String
+    Dim retryCount As Integer = 30 'odotellaan max 3 sekkaa tiedoston vapautumista
+	
+TryAgain:
+    
+	Try
+		errMsg=""
+		'output("trace","ensuring that directory exists",request("file.path"))
+		System.IO.directory.createdirectory(request("file.path"))
+		dim enc as System.Text.Encoding = System.Text.Encoding.GetEncoding(request("file.encoding"))
+		output("htrace","appending content to text file",request("file.path") & "\" & request("file.name"),request("file.encoding"))
+		system.io.file.appendalltext(request("file.path") & "\" & request("file.name"),request("file.content"),enc)
+    Catch ex As Exception
+        errMsg = ex.Message
+    End Try
+	
+	if errMsg>"" then
+        If microsoft.visualbasic.InStr(errMsg, "because it is being used by another process") > 0 Then
+            retryCount -= 1
+            If retryCount > 0 Then
+                System.Threading.Thread.Sleep(100) 'odotetaan 1/10 sekkaa
+				output("htrace","file used by another process, trying again")
+                GoTo TryAgain
+            Else
+                'ei onnistu
+                errbreak("append failed", errMsg)
+            End If
+		else
+			errbreak("append failed", errMsg)
+        End If
+	end if
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = newmsg()
+	msg("file.path")="c:\temp"
+	msg("file.name")="tmp.txt"
+	msg("file.content")="Test append data.."
+	ProcessMsg(msg,"Common.FileSystem.File.Append")
+	output(msg.contentview)
+	
+End Sub

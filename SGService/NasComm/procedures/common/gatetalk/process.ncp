@@ -1,0 +1,89 @@
+﻿imports system.net
+imports system.text
+imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.gatetalk.process
+'//		Description	: (enter short description)
+'//		Created		: 2016-11-17 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	'	tarkistetaan parametrit
+	
+	'	suoritetaan lähetys ainoastaan request-haarasta, sanomassa saatetaan uusiokäyttää
+	'	vanhaa sanomaa jonka response-haarassa on esimerkiksi tiedostodataa
+	
+	dim req as object=request.item("request")
+	
+	'	suoritetaan siirto binäärisenä
+	
+	Dim url As String = "https://" & req("site") & "/entries/gatetalk.aspx"
+	Dim webrequest As HttpWebRequest = HttpWebRequest.Create(url)
+	Dim boundary As String = "----------" + DateTime.Now.Ticks.ToString("x")
+
+	webrequest.ContentType = "multipart/form-data; boundary=" & boundary
+	webrequest.Method = "POST"
+	webrequest.Timeout = 60 * 1000 'minuutin timeout, osa tiedostoista isoja
+	webrequest.Credentials = CredentialCache.DefaultCredentials
+	Dim requestStream As System.IO.Stream = webrequest.GetRequestStream()
+	Dim sb As New StringBuilder
+
+	'   kokeillaan lähettää binäärisenä
+
+	sb.Length = 0
+	sb.Append("--") 'Two dashes. 
+	sb.Append(boundary) 'Your boundary. 
+	sb.Append(vbCrLf) 'One CRLF (\r\n). 
+	sb.Append("Content-Disposition: form-data; name=""message-content""") 'Content-Disposition: form-data; name="yourformfieldname"; filename="somefile.jpg"  
+	sb.Append(vbCrLf) 'One CRLF. 
+	sb.Append("Content-Type: application/octet-stream") 'Content-Type: image/jpg 
+	sb.Append(vbCrLf) 'Two CRLFs. 
+	sb.Append(vbCrLf)
+	sb.Append(req.ContentData) 'The value of the form field - not URL encoded. 
+	sb.Append(vbCrLf) 'One CRLF. 
+	Dim bytes2 As Byte() = Encoding.GetEncoding("iso-8859-1").GetBytes(sb.ToString)
+	requestStream.Write(bytes2, 0, bytes2.Length)
+
+	'	lähetetään sanoman terminointi
+
+	sb.Length = 0
+	sb.Append("--") 'Two dashes. 
+	sb.Append(boundary) 'Your boundary. 
+	sb.Append("--") 'Two more dashes
+	Dim bytes3 As Byte() = Encoding.GetEncoding("iso-8859-1").GetBytes(sb.ToString)
+	requestStream.Write(bytes3, 0, bytes3.Length)
+
+	'   suljetaan pyyntö, luetaan vastaus
+
+	requestStream.Close()
+
+	'   tässä kohdassa saattaa tulla ongelma, saitti palauttaa satunnaisesti 500-virheen vaikka
+	'   kaikki toimisi normaalisti, annetaan mennä virheeseen mutta kokeillaan laittaa ylemmällä tasolla uudelleenlähetys
+
+	webrequest.Timeout = 60 * 1000 'minuutin timeout, osa tiedostoista isoja
+	Dim response As WebResponse = webrequest.GetResponse()
+	Dim s As System.IO.Stream = response.GetResponseStream()
+	Dim sr As System.IO.StreamReader = New System.IO.StreamReader(s, Encoding.GetEncoding("iso-8859-1"))
+	dim ans as object=newmsg
+	ans.ContentData = sr.ReadToEnd()
+	request.copyitems(ans,,"response")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim gt as object=newmsg
+	gt("request.site")="alupro-fe-test.app08.systemsgarden.com"
+	gt("request.handler")="modules.itselleluovutus.haeKuva"
+	gt("request.file.name")="2f53b386-e9be-40ab-98b4-5d2d64fa9c33.fil"
+	processmsg(gt,"common.gatetalk.process")
+	showcontent(gt)
+	
+End Sub

@@ -1,0 +1,99 @@
+﻿imports microsoft.visualbasic
+
+
+'	Common.NAS.Page.Update
+'	**********************
+
+'<request description>
+'
+'	page
+'		reference
+'			id
+'			short-name
+'			on-insert
+'				location		default=last
+'				parent-page
+'					id
+'					short-name
+'		title
+'		long-title
+'		intro
+'		text
+'	direct-table
+'	target-client
+'		name					default=NAS
+'		timeout					default=10
+'		wait-answer				default=Y
+'
+'</request description>
+
+sub Process
+
+	VerifyRequest
+	
+	if request("page.reference.id")="" and request("page.reference.short-name")="" then
+		errbreak("page reference information missing")
+	end if
+
+	'	Transferring request to BB connection
+	
+	dim msg as object = newmsg
+	msg("action")="update_page"
+	msg("page-ref.id")=request("page.reference.id")
+	msg("page-ref.name")=request("page.reference.short-name")
+	msg("on-insert.parent-ref.id")=request("page.reference.on-insert.parent-page.id")
+	msg("on-insert.parent-ref.name")=request("page.reference.on-insert.parent-page.short-name")
+	if request("page.reference.on-insert.location")="last" then
+		msg("on-insert.position")="last"
+	else
+		msg("on-insert.position.nameref")=request("page.reference.on-insert.location")
+	end if
+	msg("page.title")=request("page.title")
+	msg("page.long-title")=request("page.long-title")
+	msg("page.intro")=request("page.intro")
+	msg("page.text")=request("page.text")
+	msg("page.params")=request("page.params")
+	msg("page.keywords")=request("page.keywords")
+	msg("page.short-name")=request("page.short-name")
+
+	'	Direct table field access
+	
+	for each dbfld as object in request.items("direct-table")
+		msg("db-fields." & dbfld.name)=dbfld.itemvalue
+	next
+
+	msg("trace")="Y"
+	
+	'	Executing application processing
+
+	if request("target-client.wait-answer")="Y" then
+		output("trace","sending request to target client",request("target-client.name"),request("target-client.timeout"))
+		ProcessApplicationRequest(msg,request("target-client.name"),request("target-client.timeout"))
+		if msg("page.local-id")>"" then request("page.id")=msg("page.local-id")
+	else
+		output("trace","sending request to target client",request("target-client.name"))
+		AppendApplicationRequest(msg,request("target-client.name"))
+	end if
+	
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("page.reference.short-name")="nascomm_testing"
+	msg("page.reference.on-insert.parent-page.short-name")="rootpage"
+	msg("page.title")="a"
+	msg("page.long-title")="b"
+	msg("page.intro")="c"
+	msg("page.text")="d"
+	msg("page.params")="e"
+	msg("page.keywords")="f"
+	msg("direct-table.pg_begdate")=now
+	msg("direct-table.pg_title")="koejuttu"
+	msg("target-client.wait-answer")="N"
+	
+	ProcessMsg(msg,"Common.NAS.Page.Update")
+	
+end sub
+

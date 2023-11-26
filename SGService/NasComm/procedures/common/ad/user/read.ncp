@@ -1,0 +1,135 @@
+﻿Imports System.DirectoryServices
+imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.ad.user.read
+'//		Description	: Lukee käyttääjn tiedot AD:sta
+'//		Created		: 2015-09-22 / OP
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+'#
+'#assembly-references:System.DirectoryServices.dll
+'#
+
+Public Sub Process()
+
+	'	tarkistetaan / asetetaan parametrit
+	
+	verifyRequest("user.account","!!!")
+    verifyRequest("user.fields","sAMAccountName,sn,displayName,name,co,mail,telephoneNumber,description,givenname")
+
+	'	alustetaan LDAP-haku
+	
+	dim ds as new DirectorySearcher
+	dim de as new DirectoryEntry(ds.SearchRoot.Path)
+	ds.Filter = "SAMAccountName=" & request("user.account")
+	ds.SizeLimit = 1 'Tehokkaampi
+
+	'	asetetaan palautettavat tiedot
+	
+	ds.PropertiesToLoad.Add("memberOf")
+	ds.PropertiesToLoad.Add("primarygroupID")
+	ds.PropertiesToLoad.Add("ObjectSID")
+	dim fields() as string=split(request("user.fields"),",")
+	for each field as string in fields
+		ds.PropertiesToLoad.Add(field)
+	next
+
+	'	etsitään, poistutaan ellei löydy
+	
+	dim res as object=newmsg
+	dim sr as searchResult
+    try
+		sr=ds.FindOne
+	    If sr Is Nothing Then res("status")="notfound"
+	catch ex as exception
+		res("status")="error"
+		res("errmsg")=ex.message
+	end try
+	
+	'	palautetaan tiedot
+	
+	if res("status")="" then
+		res("status")="found"
+		for each field as string in fields
+			for each prop as object in sr.properties(field)
+				if res("fields." & field)>"" then res("user." & field)+=";"
+				res("fields." & field)+=prop
+			next
+		next
+	end if
+
+	'	tässä koodia jonka pitäisi palauttaa ryhmiä,
+	'	ei testatessa palauttanut mitään, saattaa johtua käyttäjätunnuksen oikeuksista,
+	'	koodataan lisää kun tarvitaan
+	
+	'Dim dn As String
+	'            Dim equalsIndex, commaIndex, propertyCount As Integer
+	'
+	'            Output("htrace", "User groups..")
+	'
+	'            propertyCount = oResult.Properties("memberOf").Count
+	'            oMsg("ad.user.groups_count") = propertyCount + 1
+	'
+	'            For i = 0 To propertyCount - 1
+	'                dn = oResult.Properties("memberOf")(i)
+	'                equalsIndex = dn.IndexOf("=", 1)
+	'                commaIndex = dn.IndexOf(",", 1)
+	'                If equalsIndex = -1 Then
+	'                    Exit For
+	'                End If
+	'                oMsg("ad.user.groups." & CStr(i + 1) & ".name") = dn.Substring((equalsIndex + 1), (commaIndex - equalsIndex) - 1)
+	'            Next
+
+	'	yhteensopivuutta vanhaan rajapintaan
+
+	'showcontent(res)
+	
+	if res("status")="found" then
+		request("user.found")="Y"
+		request("user.locked")="N" '??
+		request("success")="Y"
+		
+		'	returning most common content
+		
+		request("user.lastname")=res("fields.sn")
+	    request("user.firstname")=res("fields.givenname")
+	    request("user.description")=res("fields.description")
+	    request("user.title")=res("fields.title")
+	    request("user.email")=res("fields.mail")
+	    request("user.telephone")=res("fields.telephonenumber")
+		
+		'	returning complete data
+		
+		request.item("user.data").contentdata=res.contentdata
+		
+
+	elseif res("status")="notfound" then
+	
+		request("user.found")="N"
+		request("user.locked")="N"
+		request("success")="Y"
+		exit sub
+		
+	else
+	
+		request("user.found")="N"
+		request("user.locked")="N"
+		request("success")="N"
+		
+	end if
+	
+End Sub
+	
+	
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+    'msg("user.account") = "olli.paakkonen"
+    'msg("user.fields") = "gsm,email,description,address,zip"
+	ProcessMsg(msg,"common.ad.user.read")
+	output(msg.ContentView)
+	
+End Sub

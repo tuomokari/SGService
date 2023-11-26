@@ -1,0 +1,272 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Tyonkulut.Tyo.Lisaa
+'##		Purpose: Lisää uuden työn työnkulkuun
+'##		Created: 2010-09-07
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	tyonkulku
+'		nimi
+'	tehtava
+'		nimi
+'		kaynnistys			vanha, menee kuitenkin läpi
+'		kaynnistaja			tällä pitäisi jatkossa kutsua
+'	tyo
+'		otsikko*
+'		kohde
+'			id
+'	loki
+'		otsikko
+'		teksti
+'	kayttaja
+'		nimi*
+'	suorittaja.id			suorittajan id jos halutaan tietylle henkilölle
+'	valvoja.id				valvojan id jos halutaan tietylle henkilölle
+'	tavoiteaika				mahdollisuus antaa tavoiteaika manuaalisesti (yyyy-MM-dd HH:mm)
+'	uusi_tyo.id				palauttaa uuden työn ID:n
+'		
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	dim s as string=""
+	dim tmp as object=newmsg
+	
+	'	tämä muutettiin selkeyden vuoksi
+	
+	if request("tehtava.kaynnistaja")="" then
+		request("tehtava.kaynnistaja")=request("tehtava.kaynnistys")
+	end if
+	
+	VerifyRequest
+	
+	'mahdollisuus antaa joko tehtävän hakunimi tai nimetä tehtävä ja työnkulku
+	
+	dim rs_tkteh as object=newmsg
+	if request("tehtava.kaynnistaja")>"" then
+	
+		'	etsitään hakunimen avulla, voi löytyä monta tai ei yhtään
+		
+		s="select * from tyonkulut_tyonkulku,tyonkulut_tehtava"
+		s+=" where teh_kaynnistaja='" & request("tehtava.kaynnistaja") & "'"
+		s+=" and teh_deleted='N'"
+		s+=" and tk_id=teh_tyonkulku"
+		s+=" and tk_deleted='N'"
+		rs_tkteh("recordset.query")=s
+		processmsg(rs_tkteh,"common.dbase.recordset.read")
+		
+	elseif request("tehtava.nimi")>"" and request("tyonkulku.nimi")>"" then
+	
+		'	etsitään nimien avulla, pitää löytyä täsmälleen yksi
+		
+		s="select * from tyonkulut_tyonkulku,tyonkulut_tehtava"
+		s+=" where teh_nimi='" & request("tehtava.nimi") & "'"
+		s+=" and teh_deleted='N'"
+		s+=" and tk_id=teh_tyonkulku"
+		s+=" and tk_nimi='" & request("tyonkulku.nimi") & "'"
+		s+=" and tk_deleted='N'"
+		rs_tkteh("recordset.query")=s
+		processmsg(rs_tkteh,"common.dbase.recordset.read")
+		if rs_tkteh("recordset.record-count")=0 then errbreak("työnkulkua/tehtävää ei löytynyt")
+		if rs_tkteh("recordset.record-count")>1 then errbreak("työnkulkua/tehtävää ei saatu yksilöityä")
+		
+	else
+		errbreak("annettava joko tehtävän käynnistäjä tai tehtävän ja työnkulun nimi")
+	end if
+	
+	for each tkteh as object in rs_tkteh.items("records")
+	
+		output("Lisätään työ työnkulkuun '" & tkteh("tk_nimi") & "', tehtävään '" & tkteh("teh_nimi") & "'")
+	
+		'	haetaan tyonkulun tiedot
+		
+		dim rs_tyonkulku as object=newmsg
+		rs_tyonkulku("recordset.query")="select * from tyonkulut_tyonkulku where tk_id=" & tkteh("tk_id")
+		processmsg(rs_tyonkulku,"common.dbase.recordset.read")
+		dim tyonkulku as object=rs_tyonkulku.item("records.1")
+		
+		'	haetaan tehtävän tiedot
+		
+		dim rs_tehtava as object=newmsg
+		rs_tehtava("recordset.query")="select * from tyonkulut_tehtava where teh_id=" & tkteh("teh_id")
+		processmsg(rs_tehtava,"common.dbase.recordset.read")
+		dim tehtava as object=rs_tehtava.item("records.1")
+		
+		'	lisätään työtietue
+		
+		dim rs_tyo as object=newmsg
+		rs_tyo("recordset.query")="select * from tyonkulut_tyo where tyo_id=0"
+		'rs_tyo("recordset.id-field")="tyo_id"
+		processmsg(rs_tyo,"common.dbase.recordset.read")
+		dim tyo as object=rs_tyo.item("records.1")
+		
+		'	perustiedot
+		
+		dim buf as object = request.item("buffer")
+		
+		tyo("tyo_nimi")=left(request("tyo.otsikko"),100) 'rajoitetaan nimen pituus
+		tyo("tyo_tehtava")=tehtava("teh_id")
+		tyo("tyo_alkanut")=now
+		tyo("tyo_siirtynyt")=now
+		tyo("tyo_avausaika")=now
+		tyo("tyo_datapuskuri")=request.item("buffer").contentdata
+		tyo("tyo_tunniste")=request("job.ref")
+		tyo("tyo_ed_kasittelija")=request("kayttaja.nimi")
+		tyo("tyo_kohdeliitos_tyyppi")=tyonkulku("tk_kohdeliitos_tyyppi")
+		tyo("tyo_kohdeliitos_id")=buf(tyonkulku("tk_kohdeliitos_polku"))
+		tyo("tyo_deleted")="N"
+		tyo("tyo_created")=now
+		tyo("tyo_creator")=1
+		tyo("tyo_modified")=now
+		tyo("tyo_modifier")=1
+		
+		'	20120417/OP: lisättiin mahdollisuus laittaa työlle tietty suorittaja ja/tai valvoja
+		
+		tyo("tyo_maaratty_suorittaja")=request("suorittaja.id")
+		tyo("tyo_maaratty_valvoja")=request("valvoja.id")
+		
+		'	lokitiedot
+		
+		s=now.tostring("d.M.yyy HH:mm") & " / " & request("kayttaja.nimi") & vbcrlf
+		s+=request("loki.otsikko") & vbcrlf & vbcrlf
+		if request("loki.teksti")>"" then
+			s+=request("loki.teksti") & vbcrlf & vbcrlf
+		end if
+		tyo("tyo_loki")=s
+		
+		
+		'	20120417/OP: lisättiin mahdollisuus laittaa työlle tavoiteaika manuaalisesti
+		
+		if request("tavoiteaika")>"" then
+		
+			tyo("tyo_tavoiteaika")=cdate(request("tavoiteaika"))
+			
+		else
+		
+			'	tavoiteaika kerrottu tunteina
+			
+			s=tehtava("teh_tavoiteaika")
+			tyo("tyo_tavoiteaika")=dateadd(dateinterval.hour,cint(s),now)
+		
+		end if
+		
+		'	kirjoitetaan työ kantaan, aloitetaan hakemalla manuaalisesti uusi
+		'	tietue-id, luotettavampi tapa kuin yrittää jälkikäteen selvittää mitä edellinen
+		'	lisäys on kantaan kirjoittanut
+		
+		tmp.clear
+		tmp("recordset.query")="select max(tyo_id) as max_id from tyonkulut_tyo"
+		processmsg(tmp,"common.dbase.recordset.read")
+		dim uusiTyoID as integer
+		uusiTyoID=firstfound(tmp("records.1.max_id"),0)+1
+		rs_tyo("records.1.tyo_id")=uusiTyoID
+		processmsg(rs_tyo,"common.dbase.recordset.write")
+		
+		request("uusi_tyo.id")=uusiTyoID
+		
+		'	suoritetaan mahdollinen on-init, tehtävä ei vaihdu
+	
+		dim toimintoID as integer=0
+		toimintoID=ProsessoiToiminto(uusiTyoID,rs_tyo("records.1.tyo_tehtava"),"on-init")
+		if toimintoID>0
+			output("on-init -käsittely suoritettu")
+		else
+			output("ei on-init -käsittelyä")
+		end if
+		
+		'	jos tehtävällä on on-process -toiminto, kutsutaan
+		'	suoritustoiminnallisuutta
+		
+		tmp.clear
+		s="select * from tyonkulut_toiminto"
+		s+=" where toi_tehtava=" & tehtava("teh_id")
+		s+=" and toi_nimi='on-process'"
+		s+=" and toi_deleted='N'"
+		tmp("recordset.query")=s
+		processmsg(tmp,"common.dbase.recordset.read")
+		if firstfound(tmp("recordset.record-count"),0)=1 then
+			
+			toimintoID=tmp("records.1.toi_id")
+			tmp.clear
+			tmp("tyo.id")=uusiTyoID
+			tmp("toiminto.id")=toimintoID
+			tmp("kayttaja.nimi")=request("kayttaja.nimi")
+			processmsg(tmp,"common.tyonkulut.toiminto.suorita")
+			
+		else
+		
+			output("ei on-process -käsittelyä")
+			
+		end if
+		
+	next
+	
+End Sub
+
+
+
+private function ProsessoiToiminto(tyoID as integer, tehtavaID as integer, toimintoNimi as string) as integer
+
+	'	palauttaa toiminnon id:n jos löytyi, muuten nolla
+
+	dim s as string=""
+	
+	'	etsitään toimintoa nimellä tehtävästä
+	
+	dim rs_toiminto as object=newmsg
+	s="select * from tyonkulut_toiminto"
+	s+=" where toi_tehtava=" & tehtavaID
+	s+=" and toi_nimi='" & toimintoNimi & "'"
+	s+=" and toi_deleted='N'"
+	rs_toiminto("recordset.query")=s
+	processmsg(rs_toiminto,"common.dbase.recordset.read")
+	if rs_toiminto("recordset.record-count")<>"1" then return 0
+
+	'	etsitään työ
+	
+	dim rs_tyo as object=newmsg
+	s="select * from tyonkulut_tyo where tyo_id=" & tyoID
+	rs_tyo("recordset.query")=s
+	processmsg(rs_tyo,"common.dbase.recordset.read")
+	if rs_tyo("recordset.record-count")<>"1" then errbreak("työn palauttaminen epäonnistui")
+	
+	'	suoritetaan scripti
+	
+	dim tmp2 as object=newmsg
+	tmp2.contentdata=rs_toiminto("records.1.toi_parametridata")
+	tmp2("tyo.id")=tyoID
+	tmp2.item("buffer").contentdata=rs_tyo("records.1.tyo_datapuskuri")
+	processmsg(tmp2,rs_toiminto("records.1.toi_scripti"))
+	
+	return rs_toiminto("records.1.toi_id")
+	
+end function
+
+
+
+
+Public Sub Simulate()
+
+	dim msg as object=newmsg
+	msg("kayttaja.nimi")="Simulaattori"
+	msg("tyo.otsikko")="Tuotantojakso"
+	msg("tehtava.kaynnistaja")="tj_sahaus"
+	msg("buffer.kohde_id")=58
+	msg("tavoiteaika")="2014-02-28 23:59"
+	'msg("buffer.ennuste_id")=1053
+	
+	processmsg(msg,"common.tyonkulut.tyo.lisaa")
+	showcontent(msg)
+	
+End Sub

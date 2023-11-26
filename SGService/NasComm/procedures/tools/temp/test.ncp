@@ -1,0 +1,25 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: tools.temp.test
+'//		Description	: (enter short description)
+'//		Created		: 2021-01-07 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	output(Environment.UserDomainName)
+	output(Environment.MachineName)
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("my.value")="some value here"
+	ProcessMsg(msg,"tools.temp.test")
+	'output(msg.ContentView)
+	
+End Sub

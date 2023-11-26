@@ -1,0 +1,37 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+imports microsoft.visualbasic
+
+'	Common.FileSystem.File.Delete
+'	*****************************
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("file.path","!!!")
+	VerifyRequest("file.name","!!!")
+	
+	'	Processing request
+	
+	dim fullName as string = request("file.path") & "\" & request("file.name")
+	If not System.IO.File.Exists(fullName) Then
+		request("file.found")="N"
+	else
+		request("file.found")="Y"
+		output("htrace","deleting file",fullName)
+		System.IO.File.Delete(fullName)
+	end if
+
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("file.path")="c:\temp"
+	msg("file.name")="tmp.txt"
+	ProcessMsg(msg,"Common.FileSystem.File.Delete")
+	output(msg)
+	
+end sub
+

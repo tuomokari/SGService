@@ -1,0 +1,52 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.sms.ReportCredits
+'//		Description	: (enter short description)
+'//		Created		: 2017-11-02 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+VerifyRequest("account.password",env("sms.account.password"),"!!!")
+	
+	dim pwd as string=Request("account.password")
+	Request("account.password")="**************" 'varmistetaan ettei näy ulkopuolelle
+	VerifyRequest("account.username",env("sms.account.username"),"!!!")
+	
+	'	kokeillaan laittaa viesti menemään
+	
+	dim msg as object=newmsg
+	msg("url")="https://sms.zoner.fi/sms.php"
+	msg("fields.username")=request("account.username")
+	msg("fields.password")=pwd
+	processmsg(msg,"common.http.post")
+	'showcontent(msg)
+	
+	'	vastauksena "OK" ja seurantanumero tai virheilmoitus,
+	'	jälkimmäisessä generoidaan break
+	
+	dim res as string=msg("response")
+	if isnumeric(res) then
+		request("credits")=res
+	else
+		request("credits")="0"
+		errbreak("SMS send error",res)
+	end if
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("account.username")="xxxxxx"
+	msg("account.password")="xxxxxx"
+	ProcessMsg(msg,"common.sms.ReportCredits")
+	output(msg.ContentView)
+	
+End Sub

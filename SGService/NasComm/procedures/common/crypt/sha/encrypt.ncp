@@ -1,0 +1,59 @@
+imports microsoft.visualbasic
+Imports System.Security.Cryptography
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Crypt.SHA.Encrypt
+'##		Purpose: (enter short description)
+'##		Created: 2010-05-28
+'##		Creator: (enter name / initials)
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	text
+'		plain*			plain text
+'		cipher			crypted text
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+	
+	verifyRequest
+	
+	Dim sha1Obj As New Security.Cryptography.SHA1CryptoServiceProvider
+    Dim bytesToHash() As Byte = System.Text.Encoding.ASCII.GetBytes(request("text.plain"))
+ 
+    bytesToHash = sha1Obj.ComputeHash(bytesToHash)
+ 
+    Dim strResult As String = ""
+ 
+    For Each b As Byte In bytesToHash
+        strResult += b.ToString("x2")
+    Next
+ 
+	request("text.cipher")=strResult
+
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("text.plain")="kokeillaan saadaanko mit‰‰n t‰ll‰ kertaa aikaiseksikokeillaan saadaanko mit‰‰n t‰ll‰ kertaa aikaiseksib"
+	ProcessMsg(msg,"Common.Crypt.SHA.Encrypt")
+	'output(msg.ContentView)
+	
+	msg("text.plain")="kokeillaan saadaanko mit‰‰n t‰ll‰ kertaa aikais5eksikokeillaan saadaanko mit‰‰n t‰ll‰ kertaa aikaiseksi"
+	ProcessMsg(msg,"Common.Crypt.SHA.Encrypt")
+	'output(msg.ContentView)
+	msg("text.plain")="kokeillaan saadaanko mit‰‰n t‰ll‰ kertaa aikaiseksikokeillaan saadaanko mit‰‰n t‰ll‰ kertaa aikaiseksi"
+	ProcessMsg(msg,"Common.Crypt.SHA.Encrypt")
+	
+End Sub

@@ -1,0 +1,42 @@
+﻿imports microsoft.visualbasic
+imports system.io
+
+
+'	Common.FileSystem.Folder.ListFolders
+'	************************************
+
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("folder.path","!!!")
+	VerifyRequest("folder.subfolder-limit","unlimited")
+	
+	Dim path As String = request("folder.path")
+	dim qty as integer=0
+	
+	For Each dir As String In Directory.GetDirectories(path)
+		qty +=1
+		If request("folder.subfolder-limit") <> "unlimited" Then
+			If qty > request.IntValue("folder.subfolder-limit") Then Exit For
+		End If
+		With request.newItem("folders")
+			.Value("name") = Mid(dir, Len(path) + 2)
+			.Value("path") = path
+		End With
+		request.IntValue("folder.subfolder-count") = qty 'yhteensopivuutta vanhaan koodiin
+	Next
+
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("folder.path")="c:\temp"
+	ProcessMsg(msg,"Common.FileSystem.Folder.ListFolders")
+	output(msg)
+	
+end sub
+

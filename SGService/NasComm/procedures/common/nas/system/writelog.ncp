@@ -1,0 +1,35 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+imports microsoft.visualbasic
+
+'	Common.NAS.System.WriteLog
+'	**************************
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("log-text","!!!")
+	VerifyRequest("target-cell.name","NAS")
+	VerifyRequest("target-cell.timeout",10)
+
+	'	Processing request
+	
+	dim msg as object=newmsg
+	msg("action")="write_log"
+	msg("text")=request("log-text")
+	
+	output("trace","sending request to target application",request("target-cell.name"))
+	AppendApplicationRequest(msg,request("target-cell.name"))
+	
+end sub
+
+
+sub Simulate
+
+	dim msg as object=newmsg
+	msg("target-cell.name")="NAS"
+	msg("log-text")="Testing NASComm processing, request sent: " & now
+	procedure("Common.NAS.System.WriteLog").process(msg)
+	output(msg)
+	
+end sub

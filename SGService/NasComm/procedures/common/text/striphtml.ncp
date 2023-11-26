@@ -1,0 +1,49 @@
+﻿imports microsoft.visualbasic
+imports system.text
+Imports System.Text.RegularExpressions
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Text.StripHTML
+'##		Purpose: Strip HTML tags from text
+'##		Created: 2013-01-08
+'##		Creator: KM
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	input
+'		content			Text to encode
+'	output
+'		content			Stripped text
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+	request("output.content") = System.Web.HttpUtility.HtmlEncode(System.Text.RegularExpressions.Regex.Replace(request("input.content"), "<(.|\n)*?>", String.Empty))
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("input.content")="kokeillaan onnnistuuko tämä mitenkään"
+	
+	processMsg(msg,"Common.Text.StripHTML")
+	
+	output(msg)
+	
+End Sub

@@ -1,0 +1,63 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Tyonkulut.Tyo.AsetaPuskuriArvot
+'##		Purpose: Asettaa arvoja työn puskuriin
+'##		Created: 2010-10-19
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	tyo
+'		id*		työ jonka puskuriin tiedot asetetaan
+'	buffer		haara jonka alle kirjoitetaan asetettavat muuttujat
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest 'request is verified against description
+	
+	'	haetaan työn tiedot
+	
+	dim tyo as object=newmsg
+	tyo("recordset.query")="select * from tyonkulut_tyo where tyo_id=" & request("tyo.id")
+	processmsg(tyo,"common.dbase.recordset.readUnique")
+	
+	'	puretaan puskurimuuttujat temppirekkariin
+	
+	dim reg as object=newmsg
+	reg.contentdata=tyo("tyo_datapuskuri")
+	
+	'	kopioidaan tkbuf-haaran sisältö temppirekkariin
+	
+	reg.copyitems(request,"buffer")
+	
+	'	palautetaan uusi sisältö työtietueeseen
+	
+	tyo("tyo_datapuskuri")=reg.contentdata
+	processmsg(tyo,"common.dbase.recordset.updateUnique")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("tyo.id")=59
+	msg("buffer.tkbuf.koe1")="testiaillaan"
+	msg("buffer.tkbuf.koe2")="testiaillaan2"
+	msg("buffer.tkbuf.jokujuttu.testi")="blaablaa"
+	processMsg(msg,"Common.Tyonkulut.Tyo.AsetaPuskuriArvot")
+	
+	
+End Sub

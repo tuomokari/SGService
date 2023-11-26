@@ -1,0 +1,116 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.sms.Send
+'//		Description	: (enter short description)
+'//		Created		: 2017-11-02 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	VerifyRequest("account.password",env("sms.account.password"),"!!!")
+	VerifyRequest("account.username",env("sms.account.username"),"!!!")
+	VerifyRequest("sender.number",env("sms.sender.number"),"!!!")
+	VerifyRequest("recipient.number","!!!")
+	VerifyRequest("message.content","!!!")
+	
+	dim uid as string=firstfound(request("account.username"),env("sms.account.username"))
+	dim pwd as string=firstfound(request("account.password"),env("sms.account.password"))
+	Request("account.password")="" 'varmistetaan ettei näy ulkopuolelle
+	
+	dim s as string=request("message.content")
+	dim res as string=""
+	dim chqty as integer=0
+	for each ch as char in s
+		select case ch
+			case "[","\","]","^","{","|","}","~","€"
+				chqty+=2
+				res+=ch
+			case else
+				chqty+=1
+				res+=ch
+		end select
+	next
+	if chqty>459 then errbreak("message too long (max 459 chars)")
+	request("message.content")=res
+	
+	'	poistetaan numeroista laittomat merkit
+	
+	s=Request("recipient.number")
+	res=""
+	for each ch as char in s
+		select case ch
+			case "0" to "9","+": res+=ch
+		end select
+	next
+	'	varmistetaan ettei viesti lähde testipuolelta väärälle
+	'	vastaanottajalle tutkimalla mahdollinen blokkauslista
+	
+	dim lista as string=env("sms.allowed-recipients")
+	if lista>"" then
+		lista="," & lista & ","
+		if not lista.contains("," & res & ",") then errbreak("numero ei ole sallittujen listalla")
+	end if
+	
+	'	voidaan lähettää
+	
+	request("recipient.number")=res
+	s=Request("sender.number")
+	res=""
+	for each ch as char in s
+		select case ch
+			case "a" to "z", "A" to "Z", "0" to "9": res+=ch
+			case ".": res+=ch
+		end select
+	next
+	if len(res)>11 then errbreak("sender number too long (max 11 chars)")
+	request("sender.number")=res
+	
+	'	kokeillaan laittaa viesti menemään
+	
+	dim msg as object=newmsg
+	msg("url")="https://sms.zoner.fi/sms.php"
+	msg("fields.username")=uid
+	msg("fields.password")=pwd
+	msg("fields.numberto")=request("recipient.number")
+	msg("fields.numberfrom")=request("sender.number")
+	msg("fields.message")=request("message.content")
+	msg("fields.dr")="1" 'pyydetäänkö kuittausta
+	processmsg(msg,"common.http.post")
+	'showcontent(msg)
+	
+	'	vastauksena "OK" ja seurantanumero tai virheilmoitus,
+	'	jälkimmäisessä generoidaan break
+	
+	'showcontent(res)
+	if msg("response").startswith("OK") then
+		request("response")=msg("response")
+	else
+		request("response")=msg("response")
+		errbreak("SMS send error",msg("response"))
+	end if
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	'msg("recipient.number")="050-5210166" 'Olli
+	'msg("recipient.number")="050-5921207" 'Pirkka
+	'msg("recipient.number")="040-7584551" 'Samppa
+	'msg("recipient.number")="050-5316461" 'Sanna
+	'msg("recipient.number")="050-3544837" 'Artsi
+	msg("recipient.number")="044-7611055" 'Jouni
+	msg("sender.number")="Tulityolupa"
+	msg("message.content")="Sinulle on myönnetty tulityölupa blaablaaa, hyvin pelittää lähetys :)" & vbcrlf & vbcrlf & "Otsikkoon ei saa skandeja, pitää vähän pohtia: https://gate.systemsgarden.com/uusi jee"
+	'msg("account.username")="sgarden"
+	'msg("account.password")="kKBSMTbeB"
+	ProcessMsg(msg,"common.sms.Send")
+	showcontent(msg)
+	
+End Sub

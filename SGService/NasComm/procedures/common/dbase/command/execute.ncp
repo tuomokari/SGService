@@ -1,0 +1,50 @@
+﻿imports microsoft.visualbasic
+
+'	Common.DBase.Command.Execute
+'	****************************
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("database.connection-string",env("default.database.connection-string"),"!!!")
+	VerifyRequest("command.sql","!!!")
+	VerifyRequest("command.error-ignore","N")
+
+	'	Creating NCBB instance
+	
+    Dim assyFile As String = "$mypath$\..\bin\SystemsGarden.NAS6.DataConnector.dll"
+    If Not System.IO.File.Exists(assyFile) Then Throw New Exception("Assebly file not found: " & assyFile)
+    Dim assy As System.Reflection.Assembly = System.Reflection.Assembly.LoadFrom(assyFile)
+    If assy Is Nothing Then Throw New Exception("Could not load an assembly: " & assyFile)
+	dim instanceName as string="SystemsGarden.NAS6.DataConnector.NCBB"
+    dim ncbb as object = assy.CreateInstance(instanceName)
+    If ncbb Is Nothing Then Throw New Exception("Could not create class instance: " & instanceName)	
+	
+	'	Creating and processing message
+	
+	dim msg as object = newmsg
+	msg("action")="sql.execute"
+	msg("database.connection-string")=request("database.connection-string")
+	msg("command.sql")=request("command.sql")
+	try
+		ncbb.Process(msg)
+	catch ex as exception
+		if request("command.error-ignore")="N" then throw 'poksahtaa jos tulee virhe ja haluttu raportoida
+	end try
+	
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("command.sql")="create table sg_tmp(fld1 varchar(1))"
+	msg("command.sql")="select 1 as ressu"
+	msg("command.sql")="EXEC (select 1 as ressu)"
+	'msg("command.error-ignore")="Y"
+	ProcessMsg(msg,"Common.DBase.Command.Execute")
+	output(msg)
+	
+end sub
+

@@ -1,0 +1,31 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.convert.to_base64
+'//		Description	: (enter short description)
+'//		Created		: 2019-09-20 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	dim enc as System.Text.Encoding = System.Text.Encoding.GetEncoding("iso-8859-1")
+	dim b as byte() = enc.GetBytes(request("data"))
+   	request("base64")=Convert.ToBase64String(b)
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("data")="BORENIUS\sgkyctest" & "5016F2E5-D91F-4E0E-926D-AB1E1F2FF482"
+	output("data:   " & msg("data"))
+	ProcessMsg(msg,"common.convert.to_base64")
+	msg("data")=""
+	output("base64: " & msg("base64"))
+	ProcessMsg(msg,"common.convert.from_base64")
+	output("data:   " & msg("data"))
+	
+End Sub

@@ -1,0 +1,99 @@
+﻿{
+  "MainLoopFrequenceSeconds": 30,
+  "EventLog": {
+    "Name": "SystemsGarden",
+    "SourceName": "SystemsGardenService"
+  },
+  "FileLog": {
+    "FolderPath": "logs",
+    "LogOnlyErrors": true
+  },
+  "WindowsCmdExecutablePath": "C:\\Windows\\system32\\cmd.exe",
+  "NasComm": {
+    "AssemblyFileName": "systemsgarden.nas6.nascomm.dll",
+    "ClientType": "SystemsGarden.NAS6.NASComm.Client",
+    "ClusterPath": "C:\\A\\SG\\projects\\SGService\\SGService\\nascomm",
+    "ClientName": "SystemsGardenServiceNasComm"
+  },
+  "TaskList": [
+    {
+      "Enabled": true,
+      "Name": "Restart IIS Site",
+      "Description": "Executes tools.restartsite.ncp when a file is found.",
+      "Program": "NasComm",
+      "Command": "tools/restartsite",
+      "CommandParameter": "{FileName}",
+      "Schedule": {
+        "Type": "file",
+        "FileSetting": {
+          "SpoolFolder": "C:\\A\\SG\\projects\\SGService\\SGService\\ScheduleFiles\\spool",
+          "FileMask": "*_59EA96C8-D4EA-4A85-807E-31084F69D322.*",
+          "ProcessFolder": "C:\\A\\SG\\projects\\SGService\\SGService\\ScheduleFiles\\process",
+          "ProcessedFolder": "C:\\A\\SG\\projects\\SGService\\SGService\\ScheduleFiles\\processed",
+          "FailedFolder": "C:\\A\\SG\\projects\\SGService\\SGService\\ScheduleFiles\\failed"
+        }
+      }
+    },
+    {
+      "Enabled": false,
+      "Name": "Backup",
+      "Description": "Executes tools/backup/backupsites2.ncp once a day.",
+      "Program": "NasComm",
+      "Command": "tools/backup/backupsites2",
+      "Schedule": {
+        "Type": "time",
+        "TimeSetting": {
+          "DayOfMonthList": "",
+          "DayOfWeekList": "",
+          "HourList": "16",
+          "MinuteList": "20"
+        }
+      }
+    },
+    {
+      "Enabled": true,
+      "Name": "JokuKomento",
+      "Description": "Executes CMD.",
+      "Program": "CMD",
+      "Command": "/C time /T>C:/temp/huit26.txt",
+      "Schedule": {
+        "Type": "time",
+        "TimeSetting": {
+          "DayOfMonthList": "",
+          "DayOfWeekList": "",
+          "HourList": "12,13,14,15,16",
+          "MinuteList": "*"
+        }
+      }
+    },
+    {
+      "Enabled": true,
+      "Name": "Cleanup retaintime 200 days",
+      "Description": "Remove some old files.",
+      "Program": "CleanUp",
+      "CleanupSetting": {
+        "FileMask": "*.*",
+        "SearchSubDirectories": true,
+        "RetainDays": 200,
+        "FolderList": "C:\\temp,C:\\A\\SG\\projects\\SGService\\SGService\\logs"
+      },
+        "Schedule": {
+          "Type": "time",
+          "TimeSetting": {
+            "DayOfMonthList": "",
+            "DayOfWeekList": "",
+            "HourList": "10,11,12,13,14,16,17,18",
+            "MinuteList": "*"
+          }
+        }
+      }
+      ],
+      "Guides": {
+        "Valid Task Program (mandatory)": "NasComm/CMD",
+        "Task Command example (mandatory)": "tools/backup/backupsites2",
+        "DayOfMonthList examples": "null  *  last  1,10,last",
+        "DayOfWeekList examples": "null  *  7  1,2,3,4,5",
+        "HourList examples (default=0)": "4  6,12,17  *",
+        "MinuteList examples (default=0)": "0  0,5,10,15,20  *"
+      }
+    }

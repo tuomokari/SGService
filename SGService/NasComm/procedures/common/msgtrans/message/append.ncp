@@ -1,0 +1,73 @@
+﻿
+
+'##########################################################################################################
+'
+'	NASComm procedure: Common.MsgTrans.Message.Append
+'	Purpose: Appends NASComm message to transfer queue
+'	Created: 2008-02-05
+'	Creator: OP
+'
+'##########################################################################################################
+
+
+'<request description>
+'
+'	msgtrans
+'		local				local settings
+'			output			output settings
+'				queue		queue name (for example "extra"), notnull
+'				crypt		crypt settings
+'					key		encrypt key (for example "jhgYUYTVFb876")
+'		remote				remote settings
+'			action*			action (for example "common.nas.writelog"), notnull
+'
+'</request description>
+
+
+Public Sub Process()
+
+	VerifyRequest("msgtrans.local.output.queue",env("msgtrans.local.output.queue"))
+	VerifyRequest("msgtrans.local.output.crypt.key",env("msgtrans.local.output.crypt.key"))
+	
+	VerifyRequest
+	
+	'	suoritetaan kryptaus ja pakkaus
+	
+	dim msgContent as string=""
+	msgcontent = request.contentdata
+	if request("msgtrans.local.output.crypt.key")>"" then
+		output("trace","crypting message",request("msgtrans.local.output.crypt.key"))
+		dim msg as object=newmsg
+		msg("text.plain")=msgcontent
+		msg("crypt.key")=request("msgtrans.local.output.crypt.key")
+		processmsg(msg,"common.crypt.encrypt")
+		msgcontent=msg("text.cipher")
+	end if
+	
+	output("trace","packing message")
+	dim packData as string=""
+	pack(packData,msgContent)
+	
+	'	laitetaan sanoma lähetysjonotiedostoon
+	
+	dim fd as object=newmsg
+	fd("file.path")=client("cluster.path") & "\msgtrans\queues\" & request("msgtrans.local.output.queue")
+	fd("file.name")="transfer_queue.txt"
+	fd("file.content")=packData
+	output("trace","appending message to transfer queue",fd("file.path"),fd("file.name"),request("msgtrans.remote.action"))
+	processmsg(fd,"common.filesystem.file.append")
+
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg
+	msg("recipient.address")="olli.paakkonen@systemsgarden.fi"
+	msg("message.subject")="kokeillaan välittää sanomaa"
+	msg("message.content")="Tässä tulee jotain tietoa nascomm-siirron kautta"
+	
+	msg("msgtrans.remote.action")="Common.Email.Message.Send"
+	ProcessMsg(msg,"Common.MsgTrans.Message.Append")
+
+End Sub

@@ -1,0 +1,66 @@
+﻿imports microsoft.visualbasic
+imports system.io
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: tools.putsaa_vanhat
+'//		Description	: (enter short description)
+'//		Created		: 2020-09-27 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	dim laskuri as integer=0
+	dim rajoitin as integer=10000
+		
+	'	lasketaan vanhenemisaika säilytysaikaparametrin perusteella
+	
+	dim yksikko as string=left(request("sailytysaika"),1)
+	dim maara as integer=cint(mid(request("sailytysaika"),2))
+	dim vanhenee as date
+	select case yksikko
+		case "d": vanhenee=dateadd(dateinterval.day,0-maara,now)
+		case "w": vanhenee=dateadd(dateinterval.day,0-7*maara,now)
+		case "h": vanhenee=dateadd(dateinterval.hour,0-maara,now)
+		case "m": vanhenee=dateadd(dateinterval.month,0-maara,now)
+		case else
+			output("tuntematon yksikkö",yksikko)
+			goto lopetaScannaus
+	end select
+		
+	dim tiedostot() as string = Directory.getFiles(request("polku"), "*.*", SearchOption.AllDirectories)
+	dim onEka as boolean=true
+	for each tiedosto as string in tiedostot
+		dim fi as fileinfo=new fileinfo(tiedosto)
+		if fi.lastAccessTime<vanhenee then
+			if onEka then
+				output("poistetaan tiedostot alkaen",tiedosto)
+				onEka=false
+			end if
+			fi.delete
+			laskuri+=1
+			rajoitin-=1
+			if rajoitin=0 then
+				output("rajoitin iski")
+				goto lopetaScannaus
+			end if
+		end if
+	next
+		
+lopetaScannaus:
+	output("poistettu " & laskuri & " tiedostoa")
+	
+End Sub
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("polku")="D:\SystemsGarden\sites\gate\gate_fe_prod\data\api_tokens"
+	msg("sailytysaika")="h01"
+	ProcessMsg(msg,"tools.putsaa_vanhat")
+	'output(msg.ContentView)
+	
+End Sub

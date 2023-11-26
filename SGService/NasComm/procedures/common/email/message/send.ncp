@@ -1,0 +1,156 @@
+﻿imports microsoft.visualbasic
+Imports System.Net.Mail
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Email.Message.Send
+'##		Purpose: Sends email message
+'##		Created: 2016-07-11
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	server
+'		name*				default=env("email.server.name")
+'		port				default=env("email.server.port")
+'		ssl
+'			enable			default=env("email.server.ssl.enable")
+'		account
+'			name			default=env("email.server.account.name")
+'			password		default=env("email.server.account.password")
+'	sender
+'		address*			default=env("email.sender.address")
+'		name				default=env("email.sender.name")
+'	recipient
+'		address*
+'		name
+'	message
+'		subject*
+'		content
+'			html
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+public sub Process
+
+	'	Compatibility
+	
+	if request("message.html")>"" and request("message.content.html")="" then
+		request("message.content.html")=request("message.html")
+	end if
+	if request("message.text")>"" and request("message.content")="" then
+		request("message.content")=request("message.text")
+	end if
+	
+	'	Verifying request
+	
+	VerifyRequest("server.name",env("email.server.name"),env("default.smtp.server.name"))
+	VerifyRequest("sender.address",env("email.sender.address"),env("default.smtp.sender.address"))
+	VerifyRequest("sender.name",env("email.sender.name"),env("default.smtp.sender.name"),request("sender.address"))
+	VerifyRequest("recipient.name",request("recipient.address"))
+	VerifyRequest("server.account.name",env("email.server.account.name"),env("default.smtp.server.account.name"))
+	VerifyRequest("server.account.password",env("email.server.account.password"),env("default.smtp.server.account.password"))
+	VerifyRequest
+	'showcontent(request)
+	
+	'	estetään lähetys muille kuin sallituille domaineille
+	
+	dim sallitut as string=env("email.domains.accepted")
+	if sallitut>"" then
+		sallitut="," & replace(sallitut," ","") & ","
+		if not sallitut.contains("," & findstr(request("recipient.address"),"@") & ",") then
+			output("vastaanottaja ei ollut sallittujen domainien joukossa")
+			exit sub
+		end if
+	end if
+	
+	'	Processing
+	
+	output("trace","creating mail instances")
+	Dim client As New SmtpClient(request("server.name"))
+    Dim sender As System.Net.Mail.MailAddress = New MailAddress(request("sender.address"), request("sender.name"))
+    Dim recipient As MailAddress = New MailAddress(request("recipient.address"), request("recipient.name"))
+    Dim message As MailMessage = New MailMessage(sender, recipient)
+
+	'	account
+	
+	client.UseDefaultCredentials=false
+	if request("server.account.name")>"" then
+		client.Credentials = new System.Net.NetworkCredential(request("server.account.name"), request("server.account.password"))
+		request("server.account.password._password")="Y" 'varmistetaan että piilotetaan mahdollisesta virhedumpista
+	end if
+
+	'	port
+	
+	if request("server.port")>"" then
+		client.port=request("server.port")
+	end if
+	
+	'	SSL
+	
+	if request("server.ssl.enable")="Y" then
+		client.enableSSL=request("server.ssl.enable")="Y"
+	end if
+	
+    '   subject, content
+
+    message.Subject = request("message.subject")
+	if request("message.content.html")>"" then
+    	message.Body = request("message.content.html")
+    	message.IsBodyHtml = true
+	else
+    	message.Body = request("message.content")
+    	message.IsBodyHtml = false
+	end if
+
+    '   cc
+
+    For Each item As object In request.Items("copies")
+        If item("name") = "" Then item("name") = item("address")
+		output("trace","adding cc",item("address"), item("name"))
+        message.CC.Add(New MailAddress(item("address"), item("name")))
+    Next
+
+    '   bcc
+
+    For Each item As object In request.Items("blind-copies")
+        If item("name") = "" Then item("name") = item("address")
+		output("trace","adding bcc",item("address"), item("name"))
+        message.Bcc.Add(New MailAddress(item("address"), item("name")))
+    Next
+
+    '   attachments
+
+    For Each item As object In request.Items("attachments")
+        Dim att As Attachment = New Attachment(item("file.path") & "\" & item("file.name"))
+		if item("file.newname")>"" then att.name=item("file.newname")
+		output("trace","adding attachment",item("file.path") & "\" & item("file.name"))
+        message.Attachments.Add(att)
+    Next
+
+    '   Sending
+
+	'showcontent(request)
+	output("trace","sending message")
+    client.Send(message)
+
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("recipient.address")="tuomo.kari@systemsgarden.com"
+	msg("recipient.name")="Tuomo Kari"
+	msg("message.subject")="Trying to send some email"
+	msg("message.content")="Testing testing"
+	ProcessMsg(msg,"Common.Email.Message.Send")
+	output(msg)
+	
+end sub
+

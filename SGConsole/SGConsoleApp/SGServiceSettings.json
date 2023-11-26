@@ -1,0 +1,44 @@
+﻿{
+  "ServiceRunFolder": "C:\\A\\SG\\projects\\SGService\\SGService",
+  "LoopFrequenceSeconds": 30,
+  "logName": "SystemsGarden",
+  "logSourceName": "SystemsGardenService",
+  "NasComm": {
+    "AssemblyFileName": "systemsgarden.nas6.nascomm.dll",
+    "ClientType": "SystemsGarden.NAS6.NASComm.Client",
+    "ClusterPath": "C:\\A\\SG\\projects\\SGService\\SGService\\nascomm",
+    "ClientName": "SystemsGardenServiceNasComm"
+  },
+  "TaskList": [
+    {
+      "Name": "Restart IIS Site",
+      "Description": "Executes tools.restartsite.ncp when a file is found.",
+      "Program": "NasComm",
+      "Command": "tools/restartsite",
+      "Schedule": {
+        "Type": "file",
+        "FileSetting": {
+          "FilePath": "C:\\A\\SG\\projects\\SGService\\SGService\\spool",
+          "FileMask": "*_59EA96C8-D4EA-4A85-807E-31084F69D322",
+          "ArchivePath": "C:\\A\\SG\\projects\\SGService\\SGService\\archive",
+          "FailedFilePath": "C:\\A\\SG\\projects\\SGService\\SGService\\failed"
+        }
+      }
+    },
+    {
+      "Name": "Backup",
+      "Description": "Executes tools/backup/backupsites2.ncp once a day.",
+      "Program": "NasComm",
+      "Command": "tools/backup/backupsites2",
+      "Schedule": {
+        "Type": "time",
+        "TimeSetting": {
+          "DayOfMonthList": "1,28,last",
+          "DayOfWeekList": null,
+          "HourList": "14,23",
+          "MinuteList": "1"
+        }
+      }
+    }
+  ]
+}

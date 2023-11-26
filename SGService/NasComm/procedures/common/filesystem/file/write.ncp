@@ -1,0 +1,84 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.FileSystem.File.Write
+'//		Description	: Writes content to text file
+'//		Created		: 2008-02-08 / OP
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+'<request description>
+'
+'	file
+'		path			notnull
+'		name			notnull
+'		content
+'		encoding		default=UTF-8
+'		overwrite		Y/N, default=Y
+'
+'</request description>
+
+
+Public Sub Process()
+
+	VerifyRequest
+
+	Dim errMsg As String
+    Dim retryCount As Integer = 30 'odotellaan max 3 sekkaa tiedoston vapautumista
+	
+TryAgain:
+    
+	Try
+		errMsg=""
+		output("htrace","ensuring that directory exists",request("file.path"))
+		System.IO.directory.createdirectory(request("file.path"))
+		if request("file.encoding")="binary" then
+		
+			'	binäärikäsittely
+			
+			dim enc as System.Text.Encoding = System.Text.Encoding.GetEncoding("iso-8859-1")
+			output("htrace","writing content to binary file",request("file.path") & "\" & request("file.name"))
+			system.io.file.writeallbytes(request("file.path") & "\" & request("file.name"),enc.getbytes(request("file.content")))
+
+		else
+		
+			'	normaali stringikäsittely enkoodauksineen
+			
+			dim enc as System.Text.Encoding = System.Text.Encoding.GetEncoding(request("file.encoding"))
+			output("htrace","writing content to text file",request("file.path") & "\" & request("file.name"),request("file.encoding"))
+			system.io.file.writealltext(request("file.path") & "\" & request("file.name"),request("file.content"),enc)
+			
+		end if
+    Catch ex As Exception
+       errMsg = ex.Message
+    End Try
+	
+	if errMsg>"" then
+        If microsoft.visualbasic.InStr(errMsg, "because it is being used by another process") > 0 Then
+            retryCount -= 1
+            If retryCount > 0 Then
+                System.Threading.Thread.Sleep(100) 'odotetaan 1/10 sekkaa
+				output("htrace","file used by another process, trying again")
+                GoTo TryAgain
+            Else
+                'ei onnistu
+               errbreak("write failed", errMsg)
+            End If
+		else
+			errbreak("write failed", errMsg)
+        End If
+	end if
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = newmsg()
+	msg("file.path")="c:\temp"
+	msg("file.name")="tmp.txt"
+	msg("file.encoding")="binary"
+	msg("file.content")="Test write data.."
+	processmsg(msg,"Common.FileSystem.File.Write")
+	output(msg.contentview)
+	
+End Sub

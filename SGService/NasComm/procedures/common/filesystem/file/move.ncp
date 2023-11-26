@@ -1,0 +1,61 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+imports microsoft.visualbasic
+imports system.io
+
+'	Common.FileSystem.File.Move
+'	***************************
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("file.path","!!!")
+	VerifyRequest("file.name","!!!")
+	VerifyRequest("file.new.path",request("file.path"))
+	VerifyRequest("file.new.name",request("file.name"))
+	VerifyRequest("file.new.overwrite","Y")
+
+	'	Processing request
+
+	dim filesource as string = request("file.path") & "\" & request("file.name")
+	dim filetarget as string = request("file.new.path") & "\" & request("file.new.name")
+	
+	if filesource=filetarget then 
+		errbreak("file source and file target are same")
+	end if
+
+	If not File.Exists(filesource) Then
+		errbreak("source file not found",filesource)
+	end if
+
+	output("htrace","ensuring that target directory exists",request("file.new.path"))
+	directory.createdirectory(request("file.new.path"))
+	
+	If request("file.overwrite")="N" then
+		if File.Exists(filetarget) Then
+			errbreak("target file exists, overwrite denied",filetarget)
+		end if
+	else
+		if File.Exists(filetarget) Then
+			output("trace","deleting target file before moving",filetarget)
+			file.delete(filetarget)
+		end if
+	end if
+
+	output("htrace","moving file",filesource,filetarget)
+	File.Move(filesource, filetarget)
+	
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("file.path")="c:\temp"
+	msg("file.name")="tmp.txt"
+	msg("file.new.name")="tmp2.txt"
+	ProcessMsg(msg,"Common.FileSystem.File.Move")
+	output(msg)
+	
+end sub
+

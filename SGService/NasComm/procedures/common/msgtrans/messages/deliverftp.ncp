@@ -1,0 +1,141 @@
+﻿imports microsoft.visualbasic
+imports system.io
+
+'##########################################################################################################
+'
+'	NASComm procedure: Common.MsgTrans.Messages.DeliverFTP
+'	Purpose: Transfers messages between two entry points thru FTP connection
+'	Created: 2008-01-16
+'	Creator: OP
+'
+'##########################################################################################################
+
+
+'<request description>
+'
+'	msgtrans
+'		local
+'			input
+'				queue*			local input queue name, default=env("msgtrans.local.input.queue")
+'			output
+'				queue*			local output queue name, default=env("msgtrans.local.output.queue")
+'		remote
+'			input
+'				queue*			remote input queue name, default=env("msgtrans.remote.input.queue")
+'			output
+'				queue*			remote output queue name, default=env("msgtrans.remote.output.queue")
+'
+'		ftp
+'			server					parameters for FTP connection
+'				name*				server address, default=env("msgtrans.ftp.server")
+'				port				default=21
+'				passivemode			Y/N, default=N
+'				homedir				home directory, default=env("msgtrans.ftp.homedir")
+'		
+'			account
+'				name*				default=env("msgtrans.ftp.username")
+'				password			default=env("msgtrans.ftp.password")
+'		
+'
+'</request description>
+
+
+Public Sub Process()
+
+	output("trace","Delivering transfer queues between local and remote clusters")	
+	VerifyRequest
+
+	dim localOutputFolder as string=client("cluster.path") & "\msgtrans\queues\" & request("msgtrans.local.output.queue")
+	dim localInputFolder as string=client("cluster.path") & "\msgtrans\queues\" & request("msgtrans.local.input.queue")
+	
+	dim ftpSettings as object=newmsg
+	
+	ftpSettings("server.name")=request("msgtrans.ftp.server.name")
+	ftpSettings("server.port")=request("msgtrans.ftp.server.port")
+	ftpSettings("server.passivemode")=request("msgtrans.ftp.server.passivemode")
+	ftpSettings("server.homedir")=request("msgtrans.ftp.server.homedir")
+	ftpSettings("account.name")=request("msgtrans.ftp.account.name")
+	ftpSettings("account.password")=request("msgtrans.ftp.account.password")
+
+	dim m1 as object=newmsg
+	dim m2 as object=newmsg
+	
+	'	searching for local queue
+	
+	m1("file.path")=localOutputFolder
+	m1("file.name")="transfer_queue.txt"
+	output("htrace","searching local transfer queue file",m1("file.path"),m1("file.name"))
+	processmsg(m1,"common.filesystem.file.getsize")
+	if m1("file.found")="Y" then
+	
+		'	local queue found, renaming for streaming
+		
+		m1("file.new.name")="transfer_queue_" & now.tostring("yyyyMMddHHmmss") & ".txt"
+		output("htrace","renaming queue file for transfer",m1("file.path"),m1("file.new.name"))
+		processmsg(m1,"common.filesystem.file.move")
+		
+	else
+		output("htrace","local transfer queue not found")
+	end if
+	'	scanning all existing queues
+	
+	output("htrace","scanning transfer queue files",localOutputFolder)
+	dim fnames() as string=system.io.directory.getfiles(localOutputFolder,"transfer_queue_*.txt")
+	for each fname as string in fnames
+	
+		'	sending queue
+		
+		m1.clear
+		m2.clear
+		
+		m1("file.path")=system.io.path.getdirectoryname(fname)
+		m1("file.name")=system.io.path.getfilename(fname)
+		'processmsg(local,"common.filesystem.file.read")
+		
+		output("trace","local transfer queue found, moving to destination",fname)
+		m2.copyitems(ftpSettings)
+		m2("file.local.path")=m1("file.path")
+		m2("file.local.name")=m1("file.name")
+		m2("file.remote.path")="/" & request("msgtrans.remote.input.queue")
+		m2("file.remote.name")=m1("file.name")
+
+		output("htrace","sending content")
+		processmsg(m2,"common.ftp.remotefile.write")
+		output("htrace","deleting local queue file")
+		processmsg(m1,"common.filesystem.file.delete")
+
+	next
+	
+	'	searching for remote queue
+
+	m1.clear
+
+	m1.copyitems(ftpSettings,"","")
+	m1("file.remote.path")="/" & request("msgtrans.remote.output.queue")
+	m1("file.remote.name")="transfer_queue.txt"
+	m1("file.local.path")=localInputFolder
+	m1("file.local.name")="transfer_queue_" & format(now,"yyyyMMdd_hhmmss") & ".txt"
+
+	output("htrace","loading remote queue file")
+	processmsg(m1,"common.ftp.remotefile.read")
+	if m1("file.found")="Y" then
+		output("täällä ollaan")
+		output("htrace","deleting remote queue file")
+		processmsg(m1,"common.ftp.remotefile.delete")
+	else
+		output("htrace","remote transfer queue not found")
+	end if
+
+	output("trace","exchange completed")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'output("htrace on")
+	
+	dim msg as object = NewMsg 'this is referenced as "Request" in procedure
+	ProcessMsg(msg,"Common.MsgTrans.Messages.DeliverFTP")
+	
+End Sub

@@ -1,0 +1,69 @@
+﻿imports microsoft.visualbasic
+
+'	Common.FTP.RemoteFile.Read
+'	**************************
+
+'<request description>
+'
+'	server					FTP server definition
+'		name*				server address, required
+'		port				default=21
+'		passivemode			Y/N, default=N
+'		homedir			home directory, default=/
+'
+'	account					FTP account parameters
+'		name				default="Anonymous"
+'		password			default=""
+'	file
+'		remote				remote file name and path
+'			name*
+'			path			default="/"
+'		local
+'			name			local file name
+'			path			local file path
+'		content				holds the content after download if local name/path is missing
+'
+'</request description>
+
+
+public sub Process
+
+	VerifyRequest
+	
+	dim bb as object = newmsg
+	bb("ftp.server")=request("server.name")
+	bb("ftp.port")=request("server.port")
+	bb("ftp.passivemode")=request("server.passivemode")
+	bb("ftp.username")=request("account.name")
+	bb("ftp.password")=request("account.password")
+	bb("ftp.homedir")=request("server.homedir")
+	bb("files.1.remotepath")=request("file.remote.path")
+	bb("files.1.remotename")=request("file.remote.name")
+	bb("files.1.localpath")=request("file.local.path")
+	bb("files.1.localname")=request("file.local.name")
+	bb("tempfile.path")=client("cluster.path") & "\data\ftp\tmp"
+	
+	output("trace","sending download request")
+	ExecuteBBRequest(bb, "systemsgarden.nas52.bb.ftp","files.download","../bin")
+	
+	request("file.found")=bb("files.1.found")
+	if bb("files.1.errmsg")>"" then request("file.errmsg")=bb("files.1.errmsg")
+	request("file.content")=bb("files.1.content")
+
+end sub
+
+
+sub Simulate
+
+	output("htrace on")
+	
+	dim msg as object = newmsg
+	msg("server.name")=env("test.ftp.server")
+	msg("account.name")=env("test.ftp.username")
+	msg("account.password")=env("test.ftp.password")
+	msg("file.remote.name")="koe345.txt"
+	ProcessMsg(msg,"Common.FTP.RemoteFile.Read")
+	output(msg)
+	
+end sub
+

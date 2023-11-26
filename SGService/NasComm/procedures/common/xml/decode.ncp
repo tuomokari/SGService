@@ -1,0 +1,106 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.XML.Decode
+'//		Description	: Decodes XML data to register structure
+'//		Created		: 2013-05-26 / OP
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+'
+'<request description>
+'
+'	xml
+'		data*		'data to decode
+'		content		'register content
+'
+'</request description>
+'
+
+Dim xmlData As String = ""
+Dim resReg As object = Nothing
+Dim dataPtr As Integer = 0
+
+
+Public Sub Process()
+
+	verifyRequest
+    xmlData = request("xml.data")
+    resReg = New Register
+    dataPtr = 1
+    ProcessData(resReg.Item("xml"))
+	request.copyitems(resReg,"xml","xml.content")
+	
+End Sub
+
+
+Private Sub ProcessData(Reg As Register)
+    Dim namePtrs As New Register
+    Do
+
+        '   skipataan seuraavaan erottimeen, keskeytetään jos data loppu
+
+HaeSeuraava:
+        Dim s As String = Mid(xmlData, dataPtr, 1000)
+        If s = "" Then
+            Exit Do
+        End If
+
+        '   jos ei ala erottimella on kyseessä arvo, tallennetaan
+        '   rekisteriin ja asetetaan poitteri osoittamaan seuraavaa erotinta
+
+        If Not s.StartsWith("<") Then
+            s = FindStr(s, "", "<")
+            Reg.ItemValue = s
+            dataPtr += s.Length
+            GoTo haeSeuraava
+        End If
+
+        '   skipataan mössöt
+
+        If s.StartsWith("<?") Then
+            s = FindStr(s, "<", ">")
+            dataPtr += s.Length + 2
+            GoTo haeSeuraava
+        End If
+
+        '   poistutaan silmukasta jos lopettaa tagin
+
+        If s.StartsWith("</") Then
+            s = FindStr(s, "<", ">")
+            dataPtr += s.Length + 2
+            Exit Do
+        End If
+
+        '   luetaan tagi, kutsutaan rekursiivisesti rutiinia,
+        '   varaudutaan siihen että xml-koodissa samalla nimellä
+        '   voi olla monta tagia
+
+        s = FindStr(s, "<", ">")
+        Dim tagLen = s.Length
+		if s.endswith("/") then 'myös lopputagi
+			dataPtr += tagLen + 2
+			goto haeSeuraava
+		else
+	        s = FindStr(s, "", " ")
+	        namePtrs.IntValue(s) += 1
+	        If namePtrs.IntValue(s) > 1 Then s += namePtrs(s)
+	        dataPtr += tagLen + 2
+	        ProcessData(Reg.Item(s))
+		end if
+
+    Loop
+End Sub
+	
+	
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	dim s as string=system.io.file.readalltext("d:\temp\varaosavastaus.txt")
+	output(s)
+	msg("xml.data")=s
+	ProcessMsg(msg,"Common.XML.Decode")
+	showcontent(msg.item("xml.content"))
+	
+End Sub

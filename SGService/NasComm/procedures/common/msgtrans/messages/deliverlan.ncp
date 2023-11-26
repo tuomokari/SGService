@@ -1,0 +1,125 @@
+﻿imports microsoft.visualbasic
+imports system.io
+
+'##########################################################################################################
+'
+'	NASComm procedure: Common.MsgTrans.Messages.DeliverLAN
+'	Purpose: Transfers messages between two entry points thru LAN
+'	Created: 2008-01-16
+'	Creator: OP
+'
+'##########################################################################################################
+
+
+'<request description>
+'
+'	msgtrans
+'		local
+'			input
+'				queue*			local input queue name, default=env("msgtrans.local.input.queue")
+'			output
+'				queue*			local output queue name, default=env("msgtrans.local.output.queue")
+'		remote
+'			input
+'				queue*			remote input queue name, default=env("msgtrans.remote.input.queue")
+'			output
+'				queue*			remote output queue name, default=env("msgtrans.remote.output.queue")
+'			cluster
+'				path*			remote cluster path for filesystem connection, default=env("msgtrans.remote.cluster.path")
+'
+'</request description>
+
+
+Public Sub Process()
+
+	output("trace","Delivering transfer queues between local and remote clusters")
+	VerifyRequest
+			
+	dim localOutputFolder as string=client("cluster.path") & "\msgtrans\queues\" & request("msgtrans.local.output.queue")
+	dim localInputFolder as string=client("cluster.path") & "\msgtrans\queues\" & request("msgtrans.local.input.queue")
+	dim remoteOutputFolder as string=request("msgtrans.remote.cluster.path",) & "\msgtrans\queues\" & request("msgtrans.remote.output.queue")
+	dim remoteInputFolder as string=request("msgtrans.remote.cluster.path",) & "\msgtrans\queues\" & request("msgtrans.remote.input.queue")
+
+	dim m1 as object=newmsg
+	dim m2 as object=newmsg
+		
+
+	'	searching for local queue
+	
+	dim lq as object=newmsg
+	lq("file.path")=localOutputFolder
+	lq("file.name")="transfer_queue.txt"
+	output("htrace","searching local transfer queue file",lq("file.path"),lq("file.name"))
+	processmsg(lq,"common.filesystem.file.getsize")
+	if lq("file.found")="Y" then
+	
+		'	local queue found, renaming for streaming
+		
+		lq("file.new.name")="transfer_queue_" & now.tostring("yyyyMMddHHmmss") & ".txt"
+		output("htrace","renaming queue file for transfer",lq("file.path"),lq("file.new.name"))
+		processmsg(lq,"common.filesystem.file.move")
+		
+	else
+		output("htrace","local transfer queue not found")
+	end if
+
+	output("htrace","scanning transfer queue files",lq("file.path"))
+	dim fnames() as string=system.io.directory.getfiles(localOutputFolder,"transfer_queue_*.txt")
+	for each fname as string in fnames
+	
+		'	sending queue files
+		
+		m1.clear
+		m2.clear
+		
+		m1("file.path")=system.io.path.getdirectoryname(fname)
+		m1("file.name")=system.io.path.getfilename(fname)
+		processmsg(m1,"common.filesystem.file.read")
+
+		output("trace","local transfer queue found, moving to destination",fname,remoteInputFolder)
+		m2("file.path")=remoteInputFolder
+		m2("file.name")=m1("file.name")
+		m2("file.content")=m1("file.content")
+		processmsg(m2,"common.filesystem.file.write")
+		output("htrace","deleting local queue file")
+		processmsg(m1,"common.filesystem.file.delete")
+		
+	next
+	
+	'	searching for remote queue
+	
+	m1.clear
+	m2.clear
+
+	m1("file.path")=remoteOutputFolder
+	m1("file.name")="transfer_queue.txt"
+	output("htrace","searching remote transfer queue file",m1("file.path"),m1("file.name"))
+	processmsg(m1,"common.filesystem.file.read")
+	if m1("file.found")="Y" then
+	
+		'	reading and deleting rmeote queue
+		
+		output("trace","remote transfer queue found, moving to destination",localInputFolder)
+		m2("file.path")=localInputFolder
+		m2("file.name")="transfer_queue_" & format(now,"yyyyMMdd_hhmmss") & ".txt"
+		m2("file.content")=m1("file.content")
+		processmsg(m2,"common.filesystem.file.write")
+		output("htrace","deleting remote queue file")
+		processmsg(m1,"common.filesystem.file.delete")
+	else
+		output("htrace","remote transfer queue not found")
+	end if
+
+	output("trace","delivery completed")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'output("htrace on")
+	
+	dim msg as object = NewMsg 'this is referenced as "Request" in procedure
+	ProcessMsg(msg,"Common.MsgTrans.Messages.DeliverLAN")
+	
+End Sub

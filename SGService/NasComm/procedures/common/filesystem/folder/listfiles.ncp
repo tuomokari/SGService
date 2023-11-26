@@ -1,0 +1,44 @@
+﻿imports microsoft.visualbasic
+imports system.io
+
+
+'	Common.FileSystem.Folder.ListFiles
+'	**********************************
+
+
+sub Process
+
+	'	Verifying request
+	
+	VerifyRequest("folder.path","!!!")
+	VerifyRequest("folder.file-limit","unlimited")
+	VerifyRequest("file.search","*")
+	
+	Dim reg As object=request
+	Dim path As String = request("folder.path")
+	dim qty as integer=0
+	
+	For Each file As String In Directory.GetFiles(path,request("file.search"))
+		qty +=1
+		If reg("folder.file-limit") <> "unlimited" Then
+			If qty > reg.IntValue("folder.file-limit") Then Exit For
+		End If
+		With reg.newItem("files")
+			.Value("name") = Mid(file, Len(path) + 2)
+			.Value("path") = path
+		End With
+		reg.IntValue("folder.file-count") = qty 'yhteensopivuutta vanhaan koodiin
+	Next
+
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("folder.path")="c:\temp"
+	ProcessMsg(msg,"Common.FileSystem.Folder.ListFiles")
+	output(msg)
+	
+end sub
+

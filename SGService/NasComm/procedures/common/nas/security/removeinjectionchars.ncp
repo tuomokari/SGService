@@ -1,0 +1,34 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.nas.security.RemoveInjectionChars
+'//		Description	: (enter short description)
+'//		Created		: 2015-03-09 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	dim res as new system.text.stringbuilder
+	dim chars as string=request("text.dirty")
+	for each ch as char in chars
+		select case ch
+			case "[","]","|","'","\",";","A"
+			case else:res.append(ch)
+		end select
+	next
+	request("text.clean")=res.tostring
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg
+	'msg("text.dirty")="koe[243'|]testi"
+	msg("text.dirty")="testA"
+	ProcessMsg(msg,"common.nas.security.RemoveInjectionChars")
+	output(msg.ContentView)
+	
+End Sub

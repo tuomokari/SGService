@@ -1,0 +1,383 @@
+﻿imports System.Drawing
+imports System.Drawing.Imaging
+imports System.Drawing.Drawing2D
+imports System.IO
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.Image.Resize
+'//		Description	: (enter short description)
+'//		Created		: 2015-03-23 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+'#assembly-references:System.Drawing.dll
+'#
+
+'<request description>
+'
+'	source
+'		file
+'			path
+'			name
+'			fullname
+'		image
+'			width
+'			height
+'			content
+'	target
+'		file
+'			rootpath*
+'			path
+'			name
+'			fullname
+'		image
+'			width
+'			height
+'			content
+'			type
+'	mode
+'		use_existing_file	default=Y
+'
+'</request description>
+
+private sub ResizeFile(fromPath as string,toPath as string,width as integer,height as integer)
+	Dim fullSizeImg As New Bitmap(fromPath)
+	
+	'	kokeillaan kääntää kuva oikeaan asentoon
+	
+	dim orientation as integer=0
+	try
+		orientation=fullSizeImg.GetPropertyItem(274).Value(0)
+	catch ex as exception
+	end try
+	select case orientation
+		case 2: fullSizeImg.RotateFlip(RotateFlipType.RotateNoneFlipX)
+		case 3: fullSizeImg.RotateFlip(RotateFlipType.Rotate180FlipNone)
+		case 4: fullSizeImg.RotateFlip(RotateFlipType.Rotate180FlipX)
+		case 5: fullSizeImg.RotateFlip(RotateFlipType.Rotate90FlipX)
+		case 6: fullSizeImg.RotateFlip(RotateFlipType.Rotate90FlipNone)
+		case 7: fullSizeImg.RotateFlip(RotateFlipType.Rotate270FlipX)
+		case 8: fullSizeImg.RotateFlip(RotateFlipType.Rotate270FlipNone)
+	end select
+
+	'	jatketaan
+	
+    Dim newWidth As Integer
+    Dim newHeight As Integer
+    Dim originalWidth As Integer = fullSizeImg.Width
+    Dim originalHeight As Integer = fullSizeImg.Height
+	request("source.image.width")=originalWidth
+	request("source.image.height")=originalHeight
+	dim ratio as Single
+	if width>0 then
+		ratio=CSng(width) / CSng(originalWidth)
+	else
+		ratio=CSng(height) / CSng(originalHeight)
+	end if
+    newWidth = CInt(originalWidth * ratio)
+    newHeight = CInt(originalHeight * ratio)
+	request("target.image.width")=newWidth
+	request("target.image.height")=newHeight
+    Dim newImage As image = New Bitmap(newWidth, newHeight)
+    Using graphicsHandle As Graphics = Graphics.FromImage(newImage)
+        graphicsHandle.InterpolationMode = InterpolationMode.HighQualityBicubic
+        graphicsHandle.DrawImage(fullSizeImg, 0, 0, newWidth, newHeight)
+    End Using
+	
+	'	suoritetaan tallennus pyydetyssä formaatissa
+	
+	select case request("target.image.type").tostring
+		case "bmp": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Bmp)
+		case "emf": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Emf)
+		case "gif": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Gif)
+		case "jpg": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Jpeg)
+		case "png": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Png)
+		case "wmf": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Wmf)
+		case else: errBreak("invalid format",request("target.image.type"))
+	end select
+		
+end sub
+
+'private sub RotateFile(fromPath as string,toPath as string,degrees as integer)
+'	Dim fullSizeImg As New Bitmap(fromPath)
+'    Dim newWidth As Integer
+'    Dim newHeight As Integer
+'    Dim originalWidth As Integer = fullSizeImg.Width
+'    Dim originalHeight As Integer = fullSizeImg.Height
+'	request("source.image.width")=originalWidth
+'	request("source.image.height")=originalHeight
+'	dim ratio as Single
+'	if width>0 then
+'		ratio=CSng(width) / CSng(originalWidth)
+'	else
+'		ratio=CSng(height) / CSng(originalHeight)
+'	end if
+'    newWidth = CInt(originalWidth * ratio)
+'    newHeight = CInt(originalHeight * ratio)
+'	request("target.image.width")=newWidth
+'	request("target.image.height")=newHeight
+'    Dim newImage As image = New Bitmap(newWidth, newHeight)
+'    Using graphicsHandle As Graphics = Graphics.FromImage(newImage)
+'        graphicsHandle.InterpolationMode = InterpolationMode.HighQualityBicubic
+'        graphicsHandle.DrawImage(fullSizeImg, 0, 0, newWidth, newHeight)
+'    End Using
+'	
+'	'	suoritetaan tallennus pyydetyssä formaatissa
+'	
+'	select case request("target.image.type").tostring
+'		case "bmp": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Bmp)
+'		case "emf": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Emf)
+'		case "gif": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Gif)
+'		case "jpg": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Jpeg)
+'		case "png": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Png)
+'		case "wmf": newImage.Save(toPath, System.Drawing.Imaging.ImageFormat.Wmf)
+'		case else: errBreak("invalid format",request("target.image.type"))
+'	end select
+'		
+'end sub
+
+
+'private function GetAttributes(fromPath as string) as object
+'	Dim fullSizeImg As New Bitmap(fromPath)
+'	dim orientation as integer=0
+'	try
+'		orientation=fullSizeImg.GetPropertyItem(274).Value(0)
+'	catch ex as exception
+'	end try
+'	showcontent(orientation)
+'	select case orientation
+'		case 2: fullSizeImg.RotateFlip(RotateFlipType.RotateNoneFlipX)
+'		case 3: fullSizeImg.RotateFlip(RotateFlipType.Rotate180FlipNone)
+'		case 4: fullSizeImg.RotateFlip(RotateFlipType.Rotate180FlipX)
+'		case 5: fullSizeImg.RotateFlip(RotateFlipType.Rotate90FlipX)
+'		case 6: fullSizeImg.RotateFlip(RotateFlipType.Rotate90FlipNone)
+'		case 7: fullSizeImg.RotateFlip(RotateFlipType.Rotate270FlipX)
+'		case 8: fullSizeImg.RotateFlip(RotateFlipType.Rotate270FlipNone)
+'	end select
+	
+'	'dim i as integer=fullSizeImg.GetPropertyItem(274).Value[0]
+'	dim i as integer=fullSizeImg.GetPropertyItem(274).Value(0)
+'	showcontent(i)
+'	
+'	
+'	case 1:
+'            // No rotation required.
+'            break;
+'        case 2:
+'            img.RotateFlip(RotateFlipType.RotateNoneFlipX);
+'            break;
+'        case 3:
+'            img.RotateFlip(RotateFlipType.Rotate180FlipNone);
+'            break;
+'        case 4:
+'            img.RotateFlip(RotateFlipType.Rotate180FlipX);
+'            break;
+'        case 5:
+'            img.RotateFlip(RotateFlipType.Rotate90FlipX);
+'            break;
+'        case 6:
+'            img.RotateFlip(RotateFlipType.Rotate90FlipNone);
+'            break;
+'        case 7:
+'            img.RotateFlip(RotateFlipType.Rotate270FlipX);
+'            break;
+'        case 8:
+'            img.RotateFlip(RotateFlipType.Rotate270FlipNone);
+'            break;
+'
+'	
+'	Dim propItems As PropertyItem() = fullSizeImg.PropertyItems
+'	dim res as object=newmsg
+'    Dim propItem As PropertyItem
+'    For Each propItem In propItems
+'		'showcontent(propitem)
+'		dim item as object=res.newitem("attributes")
+'		item("id")=propItem.Id.ToString("x")
+'		item("type")=propItem.Type.ToString
+'		item("len")=propItem.Len.ToString
+'		select case item("type").tostring
+'			case "3": item("value")=propItem.Value
+'			case else: item("value")=System.Text.Encoding.utf8.GetString(propItem.Value)
+'		end select
+'	next
+'	showcontent(res)
+'	return res
+'end function
+
+
+private sub CropFile(fromPath as string,toPath as string,width as integer,height as integer)
+
+	'	img1 = alkuperäinen kuva
+	
+	dim img1 as new bitmap(fromPath)
+	
+	'	kokeillaan kääntää kuva oikeaan asentoon
+	
+	dim orientation as integer=0
+	try
+		orientation=img1.GetPropertyItem(274).Value(0)
+	catch ex as exception
+	end try
+	select case orientation
+		case 2: img1.RotateFlip(RotateFlipType.RotateNoneFlipX)
+		case 3: img1.RotateFlip(RotateFlipType.Rotate180FlipNone)
+		case 4: img1.RotateFlip(RotateFlipType.Rotate180FlipX)
+		case 5: img1.RotateFlip(RotateFlipType.Rotate90FlipX)
+		case 6: img1.RotateFlip(RotateFlipType.Rotate90FlipNone)
+		case 7: img1.RotateFlip(RotateFlipType.Rotate270FlipX)
+		case 8: img1.RotateFlip(RotateFlipType.Rotate270FlipNone)
+	end select
+
+	'	jatketaan
+	
+	dim w1 as integer=img1.width
+	dim h1 as integer=img1.height
+	
+	'	img2 = skaalattu kuva josta lopullinen voidaan leikata,
+	'	lasketaan suhteet ja valitaan suurempi
+	
+	dim r1 as single=width/w1
+	dim r2 as single=height/h1
+	dim w2 as integer
+	dim h2 as integer
+	if r1>r2 then
+		w2=w1*r1
+		h2=h1*r1
+	else
+		w2=w1*r2
+		h2=h1*r2
+	end if
+	Dim img2 As image = New Bitmap(w2, h2)
+    Using graphicsHandle As Graphics = Graphics.FromImage(img2)
+        graphicsHandle.InterpolationMode = InterpolationMode.HighQualityBicubic
+        graphicsHandle.DrawImage(img1, 0, 0, w2, h2)
+    End Using
+	
+	'	img3 = leikattu kuva jota pienennetty reunoilta jotta mahtuu
+	'	lopulliseen kokoon
+
+	dim img3 as image = New Bitmap(width, height)
+	if w2>width then 'leikataan leveyssuunnassa
+		dim offset as integer=(w2-width)/2
+		output(offset)
+	    Using graphicsHandle As Graphics = Graphics.FromImage(img3)
+	        graphicsHandle.InterpolationMode = InterpolationMode.HighQualityBicubic
+	        graphicsHandle.DrawImage(img2, New Rectangle(0, 0, width, height), offset, 0, width, height, GraphicsUnit.Pixel)
+	    End Using
+	else 'leikataan korkeussuunnassa
+		dim offset as integer=(h2-height)/2
+	    Using graphicsHandle As Graphics = Graphics.FromImage(img3)
+	        graphicsHandle.InterpolationMode = InterpolationMode.HighQualityBicubic
+	        graphicsHandle.DrawImage(img2, New Rectangle(0, 0, width, height), 0, offset, width, height, GraphicsUnit.Pixel)
+	    End Using
+	end if
+	
+	'	suoritetaan tallennus pyydetyssä formaatissa
+	
+	select case request("target.image.type").tostring
+		case "bmp": img3.Save(toPath, System.Drawing.Imaging.ImageFormat.Bmp)
+		case "emf": img3.Save(toPath, System.Drawing.Imaging.ImageFormat.Emf)
+		case "gif": img3.Save(toPath, System.Drawing.Imaging.ImageFormat.Gif)
+		case "jpg": img3.Save(toPath, System.Drawing.Imaging.ImageFormat.Jpeg)
+		case "png": img3.save(toPath, System.Drawing.Imaging.ImageFormat.Png)
+		case "wmf": img3.Save(toPath, System.Drawing.Imaging.ImageFormat.Wmf)
+		case else: errBreak("invalid format",request("target.image.type"))
+	end select
+
+end sub
+
+
+Public Sub Process()
+
+	verifyRequest("target.file.name",request("source.file.name"))
+	verifyRequest("target.image.type","png") 'muutettu oletusformaatti
+	verifyRequest
+	request("target.image.type")=request("target.image.type").tolower 'varmistetaan että vertailut toimivat
+	
+	dim s as string=""
+	
+	if request("source.file.fullname")="" then
+		request("source.file.fullname")=request("source.file.path") & "\" & request("source.file.name")
+	end if
+	
+'	dim x as object=getAttributes(request("source.file.fullname"))
+'	break
+	
+	if request("target.image.width")="" and request("target.image.height")="" then
+	
+		'	ei kumpaakaan annettu, palautetaan alkuperäinen kuva
+		
+		request("target.file.fullname")=request("source.file.fullname")
+		
+	elseif request("target.image.width")="" then
+	
+		'	vain korkeus annettu, skaalataan sillä
+		
+		s=request("target.file.rootpath") & "\h" & request("target.image.height")
+		system.io.directory.createdirectory(s) 'valmistetaan että hakemisto olemassa
+		request("target.file.path")=s
+		s=s & "\" & request("target.file.name")
+		request("target.file.fullname")=s
+		if not (request("mode.use_existing_file")="Y" and file.exists(s)) then
+			if request("target.image.type")="svg" then
+				system.io.file.copy(request("source.file.fullname"),s)
+			else
+				resizeFile(request("source.file.fullname"),s,0,request("target.image.height"))
+			end if
+		end if
+	
+	elseif request("target.image.height")="" then
+	
+		'	vain leveys annettu, skaalataan sillä
+	
+		s=request("target.file.rootpath") & "\w" & request("target.image.width")
+		system.io.directory.createdirectory(s) 'valmistetaan että hakemisto olemassa
+		request("target.file.path")=s
+		s=s & "\" & request("target.file.name")
+		request("target.file.fullname")=s
+		if not (request("mode.use_existing_file")="Y" and file.exists(s)) then
+			if request("target.image.type")="svg" then
+				system.io.file.copy(request("source.file.fullname"),s)
+			else
+				resizeFile(request("source.file.fullname"),s,request("target.image.width"),0)
+			end if
+		end if
+		
+	else
+	
+		'	molemmat annettu, cropataan
+	
+		s=request("target.file.rootpath") & "\w" & request("target.image.width") & "h" & request("target.image.height")
+		system.io.directory.createdirectory(s) 'valmistetaan että hakemisto olemassa
+		request("target.file.path")=s
+		s=s & "\" & request("target.file.name")
+		's=s & "\koe.jpg"
+		request("target.file.fullname")=s
+		if not (request("mode.use_existing_file")="Y" and file.exists(s)) then
+			if request("target.image.type")="svg" then
+				system.io.file.copy(request("source.file.fullname"),s)
+			else
+				cropFile(request("source.file.fullname"),s,request("target.image.width"),request("target.image.height"))
+			end if
+		end if
+		
+	end if
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg
+	msg("source.file.name")="koe4.jpg"
+	msg("source.file.path")="c:\temppi\nascomm\data\upload3\images"
+	msg("target.file.rootpath")="c:\temppi\nascomm\data\upload3\resized"
+	msg("target.file.name")="koe4.jpg"
+	msg("target.image.width")=129
+	msg("target.image.height")=129
+	msg("target.image.type")="jpg"
+	ProcessMsg(msg,"Common.Image.Resize")
+	output(msg.ContentView)
+	
+End Sub

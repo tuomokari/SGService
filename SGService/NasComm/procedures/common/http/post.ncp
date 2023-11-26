@@ -1,0 +1,157 @@
+﻿imports microsoft.visualbasic
+imports system.net
+imports system.io
+imports system.text
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.HTTP.Post
+'##		Purpose: Posts content to HTTP web server
+'##		Created: 2010-02-19
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	url*				URL address
+'	account				Credentials (optional)
+'		username
+'		password
+'	timeout-secs		Timeout in seconds, default=100
+'	result
+'		encoding		Encoding character set, default=utf-8
+'	fields				field collection
+'	files				file collection
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest 'request is verified against description
+
+    '   luodaan ja alustetaan webrequest
+
+    Dim webrequest As HttpWebRequest = HttpWebRequest.Create(request("url"))
+    Dim boundary As String = "----------" + DateTime.Now.Ticks.ToString("x")
+	
+    webrequest.ContentType = "multipart/form-data; boundary=" & boundary
+    webrequest.Method = "POST"
+	webrequest.Timeout = request.intvalue("timeout-secs")*1000
+	if request("account.username")>"" then
+		webrequest.Credentials = New NetworkCredential(request("account.username"), request("account.password"))
+	else
+		webrequest.Credentials = CredentialCache.DefaultCredentials
+	end if
+    Dim requestStream As Stream = webrequest.GetRequestStream()
+    Dim sb As New StringBuilder
+
+    '   lähetetään lomakekenttätiedot
+
+    For Each fld As object In request.items("fields")
+        'Any time you write a standard form value to the request stream, you'll write: 
+        sb.Length = 0
+        sb.Append("--") 'Two dashes.
+        sb.Append(boundary) 'Your boundary. 
+        sb.Append(vbCrLf) 'One CRLF (\r\n). 
+        sb.Append("Content-Disposition: form-data; name=""" & fld.name & """") 'Content-Disposition: form-data; name="yourformfieldname" 
+        sb.Append(vbCrLf) 'Two CRLFs. 
+        sb.Append(vbCrLf)
+        sb.Append(fld.itemvalue) 'The value of the form field - not URL encoded. 
+        sb.Append(vbCrLf) 'One CRLF.
+        Dim bytes As Byte() = Encoding.GetEncoding(1252).GetBytes(sb.ToString)
+        requestStream.Write(bytes, 0, bytes.Length)
+    Next
+
+	'	lähetetään tiedostojen sisältö
+	
+	for each file as object in request.items("files")
+	
+		file("fieldname")=firstfound(file("fieldname"),"file")
+		file("content.type")=firstfound(file("content.type"),"application/octet-stream")
+		
+        'Any time you write a file to the request stream (for upload), you'll write: 
+        sb.Length = 0
+        sb.Append("--") 'Two dashes. 
+        sb.Append(boundary) 'Your boundary. 
+        sb.Append(vbCrLf) 'One CRLF (\r\n). 
+        sb.Append("Content-Disposition: form-data; name=""" & file("fieldname") & """; filename=""" & file("name") & """") 'Content-Disposition: form-data; name="yourformfieldname"; filename="somefile.jpg"  
+        sb.Append(vbCrLf) 'One CRLF. 
+        'A content-type header that says what the MIME type of the file is. That looks like: 
+        sb.Append("Content-Type: " & file("content.type")) 'Content-Type: image/jpg 
+        sb.Append(vbCrLf) 'Two CRLFs. 
+        sb.Append(vbCrLf)
+        Dim bytes As Byte() = Encoding.GetEncoding(1252).GetBytes(sb.ToString)
+        requestStream.Write(bytes, 0, bytes.Length)
+        'The entire contents of the file, byte for byte. It's OK to include binary content here. Don't base-64 encode it or anything, just stream it on in. 
+        Dim fileStream As FileStream = New FileStream(file("content.source"), FileMode.Open, FileAccess.Read)
+        Dim buffer(4096) As Byte
+        Dim bytesRead As Integer = 0
+        Do
+            bytesRead = fileStream.Read(buffer, 0, buffer.Length)
+            If bytesRead = 0 Then Exit Do
+            requestStream.Write(buffer, 0, bytesRead)
+        Loop
+        sb.Length = 0
+        sb.Append(vbCrLf) 'One CRLF. 
+        Dim bytes2 As Byte() = Encoding.GetEncoding(1252).GetBytes(sb.ToString)
+        requestStream.Write(bytes2, 0, bytes2.Length)
+	next
+	
+	'	lähetetään sanoman terminointi
+	
+    'At the end of your request, after writing all of your fields and files to the request, you'll write: 
+    sb.Length = 0
+    sb.Append("--") 'Two dashes. 
+    sb.Append(boundary) 'Your boundary. 
+    sb.Append("--") 'Two more dashes
+    Dim bytes3 As Byte() = Encoding.GetEncoding(1252).GetBytes(sb.ToString)
+    requestStream.Write(bytes3, 0, bytes3.Length)
+
+    '   suljetaan pyyntö, luetaan vastaus
+
+    requestStream.Close()
+    Dim response As WebResponse = webrequest.GetResponse()
+	select case request("result.encoding")
+		case ""
+		    Dim s As Stream = response.GetResponseStream()
+		    Dim sr As StreamReader = New StreamReader(s)
+			request("response")=sr.ReadToEnd()
+		case "binary"
+			Dim enc As System.Text.Encoding = System.Text.Encoding.GetEncoding("iso-8859-1") 
+    		Dim s As Stream = response.GetResponseStream()
+		    Dim sr As StreamReader = New StreamReader(s,enc)
+			request("response")=sr.ReadToEnd()
+		case else
+			Dim enc As System.Text.Encoding = System.Text.Encoding.GetEncoding(request("result.encoding")) 
+    		Dim s As Stream = response.GetResponseStream()
+		    Dim sr As StreamReader = New StreamReader(s,enc)
+			request("response")=sr.ReadToEnd()
+	end select
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("url")="https://www.verkkoisannointi.fi/service/uploadapi.php"
+	msg("fields.uid")="colemont"
+	msg("fields.pwd")="RlvBw2mD2v"
+	msg("fields.comp")=""
+	msg("fields.group")="123"
+	msg("files.1.name")="00042074_content.pdf"
+	msg("files.1.content.type")=""
+	msg("files.1.content.source")="C:\SystemsGarden\Sites\cofinet\data\cofidoc\00042\00042074_content.pdf"
+	
+	processMsg(msg,"Common.HTTP.Post")
+	
+	output(msg)
+	
+End Sub

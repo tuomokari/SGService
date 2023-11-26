@@ -1,0 +1,49 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Email.Folders.List
+'##		Purpose: (enter short description)
+'##		Created: 2008-05-06
+'##		Creator: (enter name / initials)
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest
+	dim tmp as object=newmsg
+	output("htrace","scanning folders")
+	
+	tmp.clear
+	tmp.copyitems(request)
+	ExecuteBBRequest(tmp, "SystemsGarden.NAS52.BB.Mail","folders.list","..\bin")
+	request.copyitems(tmp,"folders","folders")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("work-path")=client("cluster.path") & "\data\tiketti\tmp"
+	msg("server.name") = "Saarni.sgnet.systemsgarden.com"
+    msg("server.protocol") = "IMAP4"
+    msg("account.username") = "tiketti"
+    msg("account.password") = "Qwerty123"
+	processMsg(msg,"Common.Email.Folders.List")
+	output(msg)
+	
+End Sub

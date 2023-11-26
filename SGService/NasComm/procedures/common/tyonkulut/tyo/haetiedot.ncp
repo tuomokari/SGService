@@ -1,0 +1,75 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Tyonkulut.Tyo.HaeTiedot
+'##		Purpose: Hakee tiedot työn nykyisestä tehtävästä ja työnkulusta
+'##		Created: 2010-09-07
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	tyo
+'		id*
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	dim s as string=""
+	
+	VerifyRequest 'request is verified against description
+	
+	'	haetaan työn tiedot
+	
+	dim rs_tyo as object=newmsg
+	s="select * from tyonkulut_tyo"
+	s+=" where tyo_id=" & request("tyo.id")
+	s+=" and tyo_deleted='N'"
+	rs_tyo("recordset.query")=s
+	processmsg(rs_tyo,"common.dbase.recordset.read")
+	if rs_tyo("recordset.record-count")<>"1" then errbreak("Työtietueen avaaminen epäonnistui")
+	request.item("tiedot.tyo").contentdata=rs_tyo.item("records.1").contentdata
+	
+	'	haetaan tehtävän tiedot
+	
+	dim rs_tehtava as object=newmsg
+	s="select * from tyonkulut_tehtava"
+	s+=" where teh_id=" & request("tiedot.tyo.tyo_tehtava")
+	s+=" and teh_deleted='N'"
+	rs_tehtava("recordset.query")=s
+	processmsg(rs_tehtava,"common.dbase.recordset.read")
+	if rs_tehtava("recordset.record-count")<>"1" then errbreak("Tehtävätietueen avaaminen epäonnistui")
+	request.item("tiedot.tehtava").contentdata=rs_tehtava.item("records.1").contentdata
+	
+	'	haetaan tyonkulun tiedot
+	
+	dim rs_tyonkulku as object=newmsg
+	s="select * from tyonkulut_tyonkulku"
+	s+=" where tk_id=" & request("tiedot.tehtava.teh_tyonkulku")
+	s+=" and tk_deleted='N'"
+	rs_tyonkulku("recordset.query")=s
+	processmsg(rs_tyonkulku,"common.dbase.recordset.read")
+	if rs_tyonkulku("recordset.record-count")<>"1" then errbreak("Työnkulkutietueen avaaminen epäonnistui")
+	request.item("tiedot.tyonkulku").contentdata=rs_tyonkulku.item("records.1").contentdata
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("tyo.id")=4
+	processMsg(msg,"Common.Tyonkulut.Tyo.HaeTiedot")
+	
+	output(msg)
+	
+End Sub

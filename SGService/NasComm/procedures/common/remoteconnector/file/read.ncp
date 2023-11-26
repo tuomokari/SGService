@@ -1,0 +1,34 @@
+﻿'references $mypath$\..\bin\systemsgarden.nas6.remoteconnectorz.dll
+'imports SystemsGarden.NAS6.RemoteConnector
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.RemoteConnector.File.Read
+'//		Description	: (enter short description)
+'//		Created		: 2013-05-07 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+'	dim rc as object=new RemoteConnection
+
+	dim rc as object=CreateInstance("$mypath$\..\bin\systemsgarden.nas6.remoteconnector.dll","SystemsGarden.NAS6.RemoteConnector.RemoteConnection")
+	dim m as object=rc.newmessage
+	m("jotain")="koejuttu23"
+	rc.processmessage(m)
+	'showcontent(m)
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("my.value")="some value here"
+	ProcessMsg(msg,"Common.RemoteConnector.File.Read")
+	'output(msg.ContentView)
+	
+End Sub

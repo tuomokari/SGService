@@ -1,0 +1,71 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.Tyonkulut.Tehtava.Aloita
+'##		Purpose: Aloittaa uuden tehtävän suorituksen
+'##		Created: 2010-09-16
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	tehtava
+'		id*
+'	kayttaja
+'		nimi*
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest 'request is verified against description
+	
+	dim tmp as object=newmsg
+	dim s as string=""
+	
+	'	suoritetaan mahdollinen on-init
+	
+	
+	'	suoritetaan mahdollinen on-process
+	
+	tmp.clear
+	s="select * from tyonkulut_toiminto"
+	s+=" where toi_tehtava=" & request("tehtava.id")
+	s+=" and toi_nimi='on-process'"
+	s+=" and toi_deleted='N'"
+	tmp("recordset.query")=s
+	processmsg(tmp,"common.dbase.recordset.read")
+	if tmp("recordset.record-count")=0 then exit sub
+	
+	'	löytyi, suoritetaan scripti
+	
+	dim tmp2 as object=newmsg
+	tmp2.contentdata=tmp("records.1.toi_parametridata")
+	processmsg(tmp2,tmp("records.1.toi_scripti"))
+	
+	'	käynnistetään toiminnon käsittely
+	
+	tmp2.clear
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	msg("recipient.address")="charlie.brown@some.place"
+	msg("message.subject")="Hi there!"
+	
+	processMsg(msg,"Common.Tyonkulut.Tehtava.Aloita")
+	
+	output(msg)
+	
+End Sub

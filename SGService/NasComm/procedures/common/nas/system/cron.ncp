@@ -1,0 +1,148 @@
+﻿imports microsoft.visualbasic
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.nas.system.cron
+'//		Description	: Run cron tasks, if cron is not activated
+'//		Created		: 2019-03-21 / sg/tk
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+dim g_task_output as string
+Public Sub Process()
+	try
+		'  if cron is not activated:
+		dim register as object = NewMsg
+		ProcessMsg(register,"common.nas.system.getregister")
+		if register("reg.system.cron.activated") = "Y" and request("debug") <> "Y" then
+			throw new exception("Cannot run because cron is activated.")
+		end if
+		
+		if request("debug") <> "Y" then
+			output("Executing cron tasks")
+		else
+			output("Simulating")
+		end if
+		' handle all nascomm cron tasks
+		dim tasks as object = newmsg
+		if request("debug") = "Y" then
+			tasks("recordset.query")="select ct_id, ct_title,ct_commands,ct_timing from naf_crontask where ct_deleted='N' and ct_commands like 'handler=nascomm%'"
+		else
+			tasks("recordset.query")="select ct_id, ct_title,ct_commands,ct_timing from naf_crontask where ct_deleted='N' and ct_commands like 'handler=nascomm%' and ct_nextrun < getdate()"
+		end if
+		ProcessMsg(tasks,"Common.DBase.RecordSet.Read")
+		'output(tasks.contentView)
+		for each task as object in tasks.items("records")
+			output("---------------------------------------------")
+			output("Handle task " & task("ct_title"))
+			set_nextrun(task) ' update ct_nextrun 
+			dim success as boolean = handle_crontask(task) ' execute
+			dim started as datetime	= datetime.Now
+			if request("debug") <> "Y" then
+				insert_cronevent(task, success, started)
+			end if
+		next
+	catch ex as exception
+		output("Error in common.nas.system.cron:" & ex.message)
+	end try	
+End Sub
+' -------
+function handle_crontask(task as object) as boolean
+	try
+		dim commandRegister as object = NewMsg
+		dim canRun as boolean=false
+		g_task_output = ""
+        Dim commandlines() As String = Split(task("ct_commands"), vbCrLf)
+        For Each commandtext As String In commandlines
+			'if request("debug") = "Y" then output("   command=" & commandtext)
+			if lcase(left(commandtext, 15))= "handler=nascomm" then
+				commandRegister = NewMsg
+				canRun = true
+			else if lcase(left(commandtext, 8))= "process " then
+				if canRun then
+					if not handle_command(right(commandtext, len(commandtext)-8), commandRegister) then return false
+				end if
+				commandRegister = NewMsg
+			else if commandtext.Contains("=") then
+				dim pos as integer = InStr(commandtext, "="), regkey as string, regvalue as string
+				regkey=trim(left(commandtext, pos-1))
+				regvalue=trim(right(commandtext, len(commandtext) - pos))
+				output("   set " & regkey & "=" & regvalue)
+				commandRegister(regkey)=regvalue
+			end if
+		Next
+		return true
+	catch ex as exception
+		output("Error in common.nas.cron.cron:handle_crontask:" & ex.message)
+		return false
+	end try	
+end function
+' -------
+function handle_command(commandPath as string, commandRegister as object) as boolean
+	output("   execute " & commandPath)
+	dim success as boolean = true
+	if request("debug") <> "Y" then
+		try
+			ProcessMsg(commandRegister,commandPath)
+			success = true
+		catch ex as exception
+			success = false
+			output("Error in common.nas.cron.cron:handle_command:" & ex.message)
+			g_task_output += "Error in common.nas.cron.cron:handle_command:" & ex.message
+			output(commandRegister.contentView)
+		finally
+			g_task_output += commandRegister.contentView
+		end try
+	end if
+	return success
+End function
+' -------
+sub set_nextrun(task as object)
+	dim ct_timing as string=task("ct_timing")
+	dim d1 as datetime, next_time as string
+	
+	d1=DateAdd(Dateinterval.Second, 1, datetime.Now)
+	next_time=dbTime(timing.NextRunTime(ct_timing, d1))
+	output("   Timing=" & ct_timing & ",next_time=" & next_time)
+	dim update as object = newmsg
+	update("command.sql")="UPDATE naf_crontask set ct_status='completed', ct_lastrun=getdate(),ct_nextrun='" & next_time & "' WHERE ct_id=" & task("ct_id")
+	output("      " & update("command.sql"))
+	if request("debug") <> "Y" then
+		ProcessMsg(update,"Common.DBase.Command.Execute")
+	end if
+End Sub
+' -------
+sub insert_cronevent(task as object, success as boolean, started as datetime)
+	dim insert as object = newmsg
+
+	insert("SQLCommand.CommandText")="INSERT INTO naf_cronevent (ce_id, ce_task, ce_logtext, ce_success, ce_started, ce_ended) "
+	insert("SQLCommand.CommandText") += " SELECT ISNULL(MAX(ce_id),0)+1, @ct_id, @ce_logtext, @ce_success, @ce_started, getdate() FROM naf_cronevent"
+	insert("SQLCommand.Parameters.@ct_id")=task("ct_id")
+	insert("SQLCommand.Parameters.@ct_id.type")="int"
+	insert("SQLCommand.Parameters.@ce_logtext")=g_task_output
+	insert("SQLCommand.Parameters.@ce_logtext.type")="varchar"
+	insert("SQLCommand.Parameters.@ce_logtext.size")="max"
+	if success then
+		insert("SQLCommand.Parameters.@ce_success")="Y"
+	else
+		insert("SQLCommand.Parameters.@ce_success")="N"
+	end if
+	insert("SQLCommand.Parameters.@ce_success.type")="varchar"
+	insert("SQLCommand.Parameters.@ce_success.size")="1"
+	insert("SQLCommand.Parameters.@ce_started")=dbTime(started)
+	insert("SQLCommand.Parameters.@ce_started.type")="datetime"
+	insert("debug") = request("debug")
+	ProcessMsg(insert,"common.dbase.command.parametrized")
+End Sub
+' --------
+function dbTime(dt as datetime) as string
+	return format(dt, "yyyy-MM-dd HH:mm:ss")
+end function
+' --------
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("debug")="Y"
+	ProcessMsg(msg,"common.nas.system.cron")
+	'output(msg.contentView)
+End Sub

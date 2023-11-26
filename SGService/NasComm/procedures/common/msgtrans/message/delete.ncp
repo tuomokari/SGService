@@ -1,0 +1,29 @@
+﻿<?sgtext version="1.0" encoding="UTF-8" ?>
+
+
+'##########################################################################################################
+'
+'	NASComm procedure: Common.MsgTrans.Message.Delete
+'	Purpose: (enter short description)
+'	Created: (enter date)
+'	Creator: (enter name / initials)
+'
+'##########################################################################################################
+
+
+Public Sub Process()
+
+	VerifyRequest("msgtrans.message.filename","!!!")
+	output("deleting message file",request("msgtrans.message.filename"))
+	system.io.file.delete(request("msgtrans.message.filename"))
+
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg 'this is referenced as "Request" in procedure
+	ProcessMsg(msg,"Common.MsgTrans.Message.Delete")
+	output(msg.ContentView)
+	
+End Sub

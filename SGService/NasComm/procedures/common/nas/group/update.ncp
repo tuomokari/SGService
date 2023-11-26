@@ -1,0 +1,60 @@
+﻿imports microsoft.visualbasic
+sub Process
+
+	'	By default, locating is processed with short name
+	
+	if request("LocateField.Name")="" and request("Group.ShortName")>"" then
+		request("LocateField.Name")="grp_sname"
+		request("LocateField.Value")=request("Group.ShortName")
+	end if
+
+	'	Verifying request
+	
+	VerifyRequest("LocateField.Name","!!!")
+	VerifyRequest("LocateField.Value","!!!")
+	VerifyRequest("Group.ShortName","!!!")
+	VerifyRequest("Group.Name","!!!")
+	VerifyRequest("Group.Description","")
+	VerifyRequest("Group.Active","Y")
+	VerifyRequest("Target-Client.Name","NAS")
+	VerifyRequest("Target-Client.Timeout",10)
+	VerifyRequest("target-client.wait-answer","Y")
+
+	'	Processing request
+	
+	dim msg as object = newmsg
+	msg("action")="update_group"
+	msg("ref-field")=request("LocateField.Name")
+	msg("ref")=request("LocateField.Value")
+	msg("short-name")=request("Group.ShortNamee")
+	msg("name")=request("Group.Name")
+	msg("descr")=request("Group.Description")
+	msg("active")=request("Group.Active")
+
+	'	Direct table field access
+	
+	for each dbfld as object in request.items("direct-table")
+		msg("db-fields." & dbfld.name)=dbfld.itemvalue
+	next
+	
+	if request("target-client.wait-answer")="Y" then
+		output("trace","sending request to target client",request("target-client.name"),request("target-client.timeout"))
+		ProcessApplicationRequest(msg,request("target-client.name"),request("target-client.timeout"))
+	else
+		output("trace","sending request to target client",request("target-client.name"))
+		AppendApplicationRequest(msg,request("target-client.name"))
+	end if
+	
+end sub
+
+
+sub Simulate
+
+	dim msg as object = newmsg
+	msg("group.shortname")="testi1"
+	msg("group.name")="kokeillaan"
+	ProcessMsg(msg,"Common.NAS.Group.Update")
+	output(msg)
+	
+end sub
+

@@ -1,0 +1,101 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: tools.saittiasennus.asenna
+'//		Description	: (enter short description)
+'//		Created		: 2018-07-30 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	'	tarkastetaan ja luetaan parametrit
+	
+	dim rootPath as string=request("rootpath")
+	dim siteBaseName as string=request("basename")
+	dim guid01 as string=system.guid.newguid.tostring
+	dim guid02 as string=system.guid.newguid.tostring
+	dim guid03 as string=system.guid.newguid.tostring
+	dim guid04 as string=system.guid.newguid.tostring
+	dim guid05 as string=system.guid.newguid.tostring
+	dim guid06 as string=system.guid.newguid.tostring
+	dim guid07 as string=system.guid.newguid.tostring
+	dim guid08 as string=system.guid.newguid.tostring
+	
+	'	luetaan konffitiedosto
+	
+	dim f as object=newmsg
+	f("file.name")=request("template") & ".txt"
+	f("file.path")="D:\SystemsGarden\server\nascomm\procedures\tools\saittiasennus"
+	f("file.encoding")="binary"
+	processmsg(f,"common.filesystem.file.read")
+	'showcontent(f)
+	dim defData as string=f("file.content")
+	
+	'	luodaan rakenteet, luetaan konffitiedot
+	
+	'for i as integer=1 to 4
+	for i as integer=1 to 2
+		dim siteName as string
+		select case i
+			case 1: siteName="be_test"
+			case 2: siteName="be_prod"
+'			case 3: siteName="fe_test"
+'			case 4: siteName="fe_prod"
+		end select
+		dim siteReg as object=request.item("sites." & siteName)
+		siteReg("rootpath")=rootPath & "\" & siteBaseName & "\" & siteBaseName & "_" & siteName
+		dim siteDefs as string=findstr(defData,vbcrlf & "#sitename:" & sitename,vbcrlf & "#end")
+		sitereg("rb5.filename")=findstr(siteDefs,"#rb5name:",vbcrlf)
+		siteDefs=findstr(siteDefs,vbcrlf & vbcrlf)
+		siteDefs=replace(siteDefs,"#guid01#",guid01)
+		siteDefs=replace(siteDefs,"#guid02#",guid02)
+		siteDefs=replace(siteDefs,"#guid03#",guid03)
+		siteDefs=replace(siteDefs,"#guid04#",guid04)
+		siteDefs=replace(siteDefs,"#guid05#",guid05)
+		siteDefs=replace(siteDefs,"#guid06#",guid06)
+		siteDefs=replace(siteDefs,"#guid07#",guid07)
+		siteDefs=replace(siteDefs,"#guid08#",guid08)
+		siteDefs=replace(siteDefs,"#sitesrootpath#",rootPath)
+		siteDefs=replace(siteDefs,"#sitename#",siteBaseName)
+		siteReg("rb5.content")=siteDefs
+	next
+	
+	'	tarkistetaan ettei saitteja ole jo olemassa
+	
+	if system.io.directory.exists(rootPath) then
+		if system.io.directory.exists(rootPath & "\" & siteBaseName) then
+			errbreak("saittijuuri on jo olemassa, keskeytetään")
+		end if
+	end if
+	
+	'	luodaan rb5-ohjaustiedostot, samalla syntyy saiteille juuret
+	
+	for each siteReg as object in request.items("sites")
+		f.clear
+		f("file.path")=siteReg("rootpath") & "\rb5"
+		f("file.name")=siteReg("rb5.filename")
+		'f("file.encoding")="binary"
+		f("file.content")=siteReg("rb5.content")
+		output("luodaan ohjaustiedosto",f("file.path") & "\" & f("file.name"))
+		processmsg(f,"common.filesystem.file.write")
+	next
+	
+	output("homma hoidettu")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("rootpath")="D:\systemsgarden\sites"
+	msg("basename")="turunkaupunki2021"
+	msg("template")="2021_template"
+	ProcessMsg(msg,"tools.saittiasennus.asenna")
+	'output(msg.ContentView)
+	
+End Sub

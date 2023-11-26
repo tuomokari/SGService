@@ -1,0 +1,96 @@
+﻿imports system.io
+imports microsoft.visualbasic
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.nas.system.getregister
+'//		Description	: reads and converts a register file to request.reg
+'//		Created		: 2018-12-12 / sg/tk
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+'<request description>
+'
+'	register
+'		path
+'
+'</request description>
+
+dim reg as object
+Public Sub Process()
+	VerifyRequest("register.path", env("site.rootpath") & "\config\startup.register")
+	reg=newmsg
+	try
+		dim allData as string = file.readalltext(request("register.path"))
+		if allData = "" then throw new exception("register file not found")
+		
+        'korvausmuuttujat alussa, rekkarirakenne alkaa riviltä jolla lukee "system"
+        Dim defData As String = FindStr(allData, "", vbCrLf & "system" & vbCrLf)
+        Dim regData As String = "system" & vbCrLf & FindStr(allData, vbCrLf & "system" & vbCrLf)
+        'prosessoidaan korvausmuuttujat
+        Dim lines() As String = Split(defData, vbCrLf)
+		dim maxrowlen as integer=0 ' just to get array size limit
+        For Each line As String In lines
+            If line.Contains("=") Then
+                Dim prmNimi As String = Trim(FindStr(line, "", "="))
+                Dim prmArvo As String = Trim(FindStr(line, "="))
+                regData = Replace(regData, "$" & prmNimi & "$", prmArvo)
+            End If
+			if len(line) > maxrowlen then maxrowlen=len(line)
+        Next
+		'output(regData)
+        Dim reglines() As String = Split(regData, vbCrLf)
+		dim level as integer=-1
+		dim keys(maxrowlen) as string
+        For Each line As String In reglines
+            If line.Contains("'") Then
+				line = FindStr(line, "", "'")
+			end if
+			if Trim(line.replace("	", "")) <> "" then
+				'output(line)
+				dim linelevel as integer=getLinelevel(line)
+				line=Trim(line.replace("	", ""))
+				if linelevel > level + 1 then throw new exception("Rakennevirhe")
+				while linelevel < level
+					keys(level)=""
+					level -= 1
+				end while
+                Dim prmNimi As String = Trim(FindStr(line, "", ":"))
+                Dim prmArvo As String = Trim(FindStr(line, ":"))
+				level = linelevel
+				keys(level)=prmNimi
+				if prmArvo > "" then
+					reg(getKeypath(keys, level)) = prmArvo
+				end if
+            End If
+        Next
+	catch ex as exception
+		output("Error:" & ex.message)
+	end try
+	
+	request.copyitems(reg,,"reg")
+End Sub
+function getKeypath(keys as string(), level as integer) as string
+	dim keypath as string=keys(0)
+	dim clevel as integer=1
+	while clevel <= level
+		keypath += "." & keys(clevel)
+		clevel += 1
+	end while
+	return keypath
+end function
+function getLinelevel(line as string) as integer
+	dim level as integer=0
+	while right(left(line, level+1),1) = "	" 
+		level += 1
+	end while
+	return level
+end function
+	
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("register.path")="D:\SystemsGarden\sites\alfons2021_test\config\startup.register"
+	ProcessMsg(msg,"common.nas.system.getregister")
+	output(msg.ContentView)
+	
+End Sub

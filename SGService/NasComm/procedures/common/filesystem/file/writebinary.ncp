@@ -1,0 +1,50 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.FileSystem.File.WriteBinary
+'##		Purpose: Writes binary file content
+'##		Created: 2008-03-05
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	file
+'		path			notnull
+'		name			notnull
+'		content
+'		overwrite		Y/N, default=Y
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	'	This code is executed when procedure is called
+	
+	VerifyRequest 'request is verified against description
+	
+	dim msg as object=newmsg
+	msg("file.encoding")="binary"
+	msg("file.path")=request("file.path")
+	msg("file.name")=request("file.name")
+	msg("file.content")=request("file.content")
+	processmsg(msg,"common.filesystem.file.write")
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = newmsg()
+	msg("file.path")="c:\temp"
+	msg("file.name")="tmp.txt"
+	msg("file.content")="Test write data.."
+	procedure("Common.FileSystem.File.WriteBinary").process(msg)
+	
+End Sub

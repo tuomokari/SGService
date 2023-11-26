@@ -1,0 +1,27 @@
+﻿'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.convert.from_base64
+'//		Description	: (enter short description)
+'//		Created		: 2019-09-20 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	dim enc as System.Text.Encoding = System.Text.Encoding.GetEncoding(firstfound(request("encoding"),"iso-8859-1"))
+	dim b as byte() = Convert.FromBase64String(request("base64"))
+    request("data") = enc.GetString(b)	
+
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("base64")="Kmtva2VpbGxhYW5bXS8mLyMmJS8mpCUjLw=="
+	ProcessMsg(msg,"common.convert.from_base64")
+	output(msg.ContentView)
+	
+End Sub

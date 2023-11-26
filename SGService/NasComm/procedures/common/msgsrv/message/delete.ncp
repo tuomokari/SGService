@@ -1,0 +1,70 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.MsgSrv.Message.Delete
+'##		Purpose: (enter short description)
+'##		Created: 2011-02-10
+'##		Creator: (enter name / initials)
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'	server			delivery server information
+'		domain		default=env("msgsrv.server.default.domain")
+'		url*		url address, filled based on domain if empty
+'	service			delivery service information
+'		id*			service id
+'	message			message definitions
+'		id*			message id
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	dim s as string=""
+	
+	'	filling empty url
+	
+	if request("server.domain")>"" and request("server.url")="" then
+		s="http://" & request("server.domain")
+		s+="/modules/msgsrv/msgsrv_entry.aspx"
+		request("server.url")=s
+	end if
+	
+	'	verifying request against description
+	
+	VerifyRequest
+	
+	'	sending delete request
+	
+	dim post as object=newmsg
+	post("url")=request("server.url")
+	post("fields.action")="delete message"
+	post("fields.service_id")=request("service.id")
+	post("fields.message_id")=request("message.id")
+	processmsg(post,"common.http.post")
+	
+	'	verifying result
+	
+	if post("response")<>"OK" then throw new exception(post("response"))
+	
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	processMsg(msg,"Common.MsgSrv.Message.Delete")
+	
+	output(msg)
+	
+End Sub

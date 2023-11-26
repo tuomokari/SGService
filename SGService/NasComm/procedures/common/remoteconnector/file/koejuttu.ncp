@@ -1,0 +1,27 @@
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: Common.RemoteConnector.File.koejuttu
+'//		Description	: (enter short description)
+'//		Created		: 2013-05-08 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	VerifyRequest("my.value","!!!")
+	output("setting result value")
+	Request("my.result")="some result value"
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim msg as object = NewMsg				'this is referenced as "Request" in procedure
+	msg("my.value")="some value here"
+	ProcessMsg(msg,"Common.RemoteConnector.File.koejuttu")
+	'output(msg.ContentView)
+	
+End Sub

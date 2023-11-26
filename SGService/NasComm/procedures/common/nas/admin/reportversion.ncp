@@ -1,0 +1,58 @@
+﻿imports microsoft.visualbasic
+
+'##########################################################################################################
+'##
+'##		NASComm procedure: Common.NAS.Admin.ReportVersion
+'##		Purpose: Reports version information
+'##		Created: 2008-05-17
+'##		Creator: OP
+'##
+'##########################################################################################################
+'
+'
+'<request description>
+'
+'</request description>
+'
+'----------------------------------------------------------------------------------------------------------
+
+
+Public Sub Process()
+
+	VerifyRequest
+	
+	'	luetaan versio.txt
+	
+	dim msg as object=newmsg
+	msg("file.path")=client("cluster.path") & "\.."
+	msg("file.name")="version.txt"
+	processmsg(msg,"common.filesystem.file.read")
+	
+	'	etsitään ensimmäinen rivi joka täsmää versionumero-otsikkoon,
+	'	huomioidaan että saattaa olla suomen- tai englanninkielinen
+	
+	dim verText as string=replace(lcase(msg("file.content")),chr(9),"")
+	verText=findstr(verText,vbcrlf & "versio", vbcrlf)
+	dim verNum as string=trim(findstr(verText," ",","))
+	dim verPubDate as string=trim(findstr(verText,",","/"))
+	
+	'	jos ei julkaisupäivää, merkataa versioksi beta
+	
+	if verPubDate>"" then
+		request("version.number")=verNum
+	else
+		request("version.number")=verNum & " (beta)"
+	end if
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	'	This code is executed when you press execute button in NASComm editor
+	
+	dim msg as object = newMsg
+	processMsg(msg,"Common.NAS.Admin.ReportVersion")
+	output(msg)
+	
+End Sub

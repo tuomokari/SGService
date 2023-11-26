@@ -1,0 +1,94 @@
+﻿imports microsoft.visualbasic
+
+'///////////////////////////////////////////////////////////////////////////////////////
+'//
+'//		Procedure	: common.json.koe2
+'//		Description	: (enter short description)
+'//		Created		: 2019-09-25 / (enter name / initials)
+'//		Modified	: 
+'//
+'///////////////////////////////////////////////////////////////////////////////////////
+
+
+Public Sub Process()
+
+	dim reg as object=newmsg
+	dim taso as integer=0
+	dim tasoReg(10) as object
+	tasoreg(0)=reg
+	dim mode as string=""
+	dim nimi as string=""
+	dim arvo as string=""
+	dim onTeksti as boolean=false
+	for each ch as char in request("json.data")
+		if onTeksti and ch<>"""" then
+			select case mode
+				case "nimi": nimi+=ch
+				case "arvo": arvo+=ch
+			end select
+		else
+			select case ch
+				case "}","]",","
+					if nimi>"" then
+						'output(nimi,arvo)
+						tasoreg(taso)(nimi)=arvo
+						nimi=""
+						arvo=""
+					end if
+			end select
+			select case ch
+				case "{"
+					dim kn as string=tasoreg(taso)("kokoelmanimi")
+					if kn>"" then
+						tasoreg(taso+1)=tasoreg(taso).newitem(kn)
+					else
+						tasoreg(taso+1)=tasoreg(taso).item(nimi)
+					end if
+					nimi=""
+					arvo=""
+					taso+=1
+					mode="nimi"
+				case "}"
+					taso-=1
+				case """"
+					onTeksti=not onTeksti
+'					if onTeksti then
+'						nimi=""
+'						arvo=""
+'					end if
+				case ":"
+					mode="arvo"
+				case ","
+					mode="nimi"
+				case "["
+					tasoreg(taso)("kokoelmanimi")=nimi
+					nimi=""
+					arvo=""
+					mode="nimi"
+				case "]"
+					tasoreg(taso)("kokoelmanimi")=""
+				case " ",vbcr,vblf 'näitä ei keräillä
+				case else
+					arvo+=ch
+			end select
+		end if
+	next
+	request.item("reg").contentdata=reg.contentdata
+	
+End Sub
+
+
+Public Sub Simulate()
+
+	dim f as object=newmsg
+	f("file.name")="20190923_145421.txt"
+	f("file.path")="D:\SystemsGarden\sites\tulityo\tulityo_fe_prod\data\kauppapaikka\spool"
+	f("file.encoding")="binary"
+	processmsg(f,"common.filesystem.file.read")
+	
+	dim msg as object = NewMsg
+	msg("json.data")=f("file.content")
+	ProcessMsg(msg,"common.json.json2reg_v2")
+	output(msg.ContentView)
+	
+End Sub
